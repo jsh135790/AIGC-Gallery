@@ -1,0 +1,37 @@
+{
+  "name": "aigc-gallery",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@vueuse/core": "^14.2.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "dexie": "^4.3.0",
+    "exifreader": "^4.36.1",
+    "lucide-vue-next": "^0.563.0",
+    "pako": "^2.1.0",
+    "pinia": "^3.0.4",
+    "png-chunk-text": "^1.0.0",
+    "png-chunks-extract": "^1.0.0",
+    "reka-ui": "^2.8.0",
+    "tailwind-merge": "^3.4.0",
+    "vue": "^3.5.28",
+    "vue-router": "^5.0.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.18",
+    "@types/node": "^25.2.2",
+    "@types/pako": "^2.0.4",
+    "@vitejs/plugin-vue": "^6.0.4",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
+    "vue-tsc": "^3.2.4"
+  }
+}

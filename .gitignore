@@ -1,0 +1,39 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Dependencies
+node_modules
+.npm
+
+# Build output
+assets/*
+dist
+dist-ssr
+
+# Editor directories and files
+.vscode/*
+.cursor/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+画师备份.md
+CLAUDE.md
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Env files
+.env
+.env.local
+.env.*.local
+
+# TypeScript cache
+*.tsbuildinfo
