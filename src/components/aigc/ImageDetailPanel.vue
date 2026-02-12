@@ -85,9 +85,10 @@ async function removeTag(tag: string) {
   await store.updateImage(props.image.id, { tags: updatedTags })
 }
 
-async function handleMoveFolder(folderId: string) {
+async function handleMoveFolder(folderId: unknown) {
   if (!props.image?.id) return
-  const numId = folderId === 'none' ? null : parseInt(folderId)
+  const id = String(folderId)
+  const numId = id === 'none' ? null : parseInt(id)
   await store.moveImagesToFolder([props.image.id], numId)
   moveToFolder.value = ''
   toast.success('已移动到分类')

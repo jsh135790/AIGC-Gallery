@@ -50,10 +50,10 @@ function decodeITXtChunk(data: Uint8Array): PngTextChunk {
 export async function extractExifMetadata(file: File): Promise<string | null> {
   try {
     const ExifReader = await import('exifreader')
-    const data = await ExifReader.load(file)
+    const data = await ExifReader.load(file) as Record<string, { value?: unknown }>
     if (data.UserComment?.value) {
       return String.fromCodePoint(...(data.UserComment.value as number[]))
-        .replaceAll('\x00', '')
+        .replace(/\x00/g, '')
         .slice(7) // Skip "UNICODE" prefix
     }
     return null
