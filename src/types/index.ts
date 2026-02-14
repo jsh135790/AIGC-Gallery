@@ -128,8 +128,6 @@ export interface PngTextChunk {
 
 // ===== UI Types =====
 
-export type ViewMode = 'grid' | 'list'
-
 export type SortField = 'createdAt' | 'name' | 'rating' | 'filename'
 export type SortOrder = 'asc' | 'desc'
 

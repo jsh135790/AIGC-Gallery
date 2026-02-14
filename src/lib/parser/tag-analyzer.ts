@@ -42,8 +42,27 @@ const STYLE_TAGS = new Set([
 export function extractTags(prompt: string): string[] {
   if (!prompt) return []
 
-  return prompt
-    .split(',')
+  // Split on commas that are NOT inside bracket groups (parentheses, curly braces, square brackets)
+  const parts: string[] = []
+  let current = ''
+  let depth = 0
+  for (const ch of prompt) {
+    if (ch === '(' || ch === '{' || ch === '[') {
+      depth++
+      current += ch
+    } else if (ch === ')' || ch === '}' || ch === ']') {
+      depth = Math.max(0, depth - 1)
+      current += ch
+    } else if (ch === ',' && depth === 0) {
+      parts.push(current)
+      current = ''
+    } else {
+      current += ch
+    }
+  }
+  if (current) parts.push(current)
+
+  return parts
     .map(tag => tag.trim())
     .map(tag => {
       // Remove weight markers like (tag:1.2) -> tag

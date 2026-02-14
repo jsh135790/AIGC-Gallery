@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import {
-  Upload, LayoutGrid, List, ArrowUpDown,
+  Upload, ArrowUpDown,
   Trash2, FolderInput, Tag, CheckSquare, X,
   SlidersHorizontal, PanelLeftClose, PanelLeft,
 } from 'lucide-vue-next'
@@ -225,28 +225,6 @@ const currentFolderLabel = computed(() => {
               </Button>
             </template>
 
-            <!-- View mode -->
-            <div class="flex rounded-md border border-border/50 overflow-hidden">
-              <Button
-                variant="ghost"
-                size="icon"
-                class="h-8 w-8 rounded-none"
-                :class="store.viewMode === 'grid' && 'bg-muted'"
-                @click="store.viewMode = 'grid'"
-              >
-                <LayoutGrid class="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                class="h-8 w-8 rounded-none border-l border-border/50"
-                :class="store.viewMode === 'list' && 'bg-muted'"
-                @click="store.viewMode = 'list'"
-              >
-                <List class="h-3.5 w-3.5" />
-              </Button>
-            </div>
-
             <DropdownMenu>
               <DropdownMenuTrigger as-child>
                 <Button variant="outline" size="sm" class="gap-1.5 h-8">
@@ -341,13 +319,7 @@ const currentFolderLabel = computed(() => {
             {{ store.filteredImages.length }} 张图片
           </p>
 
-          <div
-            :class="[
-              store.viewMode === 'grid'
-                ? 'grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
-                : 'space-y-2',
-            ]"
-          >
+          <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             <ImageCard
               v-for="image in store.filteredImages"
               :key="image.id"

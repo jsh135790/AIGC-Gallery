@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, toRaw } from 'vue'
 import { db } from '@/lib/db'
-import type { AIGCImage, AIGCFolder, Tag, SortOrder, ViewMode, FolderNavItem } from '@/types'
+import type { AIGCImage, AIGCFolder, Tag, SortOrder, FolderNavItem } from '@/types'
 
 /** Strip Vue reactive proxies for IndexedDB structured-clone compatibility. */
 function stripProxy<T extends Record<string, unknown>>(obj: T): T {
@@ -29,7 +29,6 @@ export const useAigcStore = defineStore('aigc', () => {
   const selectedTags = ref<string[]>([])
   const sortField = ref<'createdAt' | 'filename'>('createdAt')
   const sortOrder = ref<SortOrder>('desc')
-  const viewMode = ref<ViewMode>('grid')
   const isLoading = ref(false)
 
   // Navigation items for sidebar
@@ -230,7 +229,6 @@ export const useAigcStore = defineStore('aigc', () => {
     selectedTags,
     sortField,
     sortOrder,
-    viewMode,
     isLoading,
     folderNavItems,
     filteredImages,
