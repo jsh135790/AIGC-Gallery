@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import {
   Images, Inbox, Heart, Folder, FolderPlus,
   MoreHorizontal, Pencil, Trash2, Palette,
 } from 'lucide-vue-next'
 import { useAigcStore } from '@/stores/aigcStore'
+import { useI18n } from '@/composables/useI18n'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -26,6 +27,7 @@ import {
 import type { FolderNavItem } from '@/types'
 
 const store = useAigcStore()
+const { t } = useI18n()
 
 const ICON_MAP: Record<string, any> = {
   Images, Inbox, Heart, Folder, FolderPlus, Palette,
@@ -92,12 +94,19 @@ async function handleDeleteFolder(id: number) {
     store.selectedFolderId = 'all'
   }
 }
+// Translate system folder names
+function getFolderName(item: FolderNavItem): string {
+  if (item.id === 'all') return t('aigc.allImages')
+  if (item.id === 'uncategorized') return t('aigc.uncategorized')
+  if (item.id === 'favorites') return t('common.favorites')
+  return item.name
+}
 </script>
 
 <template>
   <div class="flex h-full flex-col">
     <div class="p-4 pb-2">
-      <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">分类目录</h2>
+      <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{{ t('folder.categories') }}</h2>
     </div>
 
     <ScrollArea class="flex-1 px-2">
@@ -130,7 +139,7 @@ async function handleDeleteFolder(id: number) {
               class="h-4 w-4 shrink-0"
             />
 
-            <span class="flex-1 truncate">{{ item.name }}</span>
+            <span class="flex-1 truncate">{{ getFolderName(item) }}</span>
 
             <span
               class="text-xs tabular-nums"
@@ -152,11 +161,11 @@ async function handleDeleteFolder(id: number) {
               <DropdownMenuContent align="end" class="w-36">
                 <DropdownMenuItem class="gap-2" @click="openEditFolder(item)">
                   <Pencil class="h-3.5 w-3.5" />
-                  重命名
+                  {{ t('common.rename') }}
                 </DropdownMenuItem>
                 <DropdownMenuItem class="gap-2 text-destructive" @click="handleDeleteFolder(item.id as number)">
                   <Trash2 class="h-3.5 w-3.5" />
-                  删除
+                  {{ t('common.delete') }}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -174,7 +183,7 @@ async function handleDeleteFolder(id: number) {
         @click="openNewFolder"
       >
         <FolderPlus class="h-4 w-4" />
-        新建分类
+        {{ t('folder.newFolder') }}
       </Button>
     </div>
 
@@ -182,17 +191,17 @@ async function handleDeleteFolder(id: number) {
     <Dialog :open="newFolderOpen" @update:open="newFolderOpen = $event">
       <DialogContent class="max-w-sm glass-heavy">
         <DialogHeader>
-          <DialogTitle>{{ editingFolderId ? '编辑分类' : '新建分类' }}</DialogTitle>
-          <DialogDescription>为图片创建一个分类文件夹</DialogDescription>
+          <DialogTitle>{{ editingFolderId ? t('folder.editFolder') : t('folder.newFolder') }}</DialogTitle>
+          <DialogDescription>{{ t('folder.createDescription') }}</DialogDescription>
         </DialogHeader>
         <div class="space-y-4 py-2">
           <Input
             v-model="newFolderName"
-            placeholder="分类名称"
+            :placeholder="t('folder.folderName')"
             @keydown.enter="saveFolder"
           />
           <div class="space-y-2">
-            <label class="text-sm text-muted-foreground">标识色</label>
+            <label class="text-sm text-muted-foreground">{{ t('folder.folderColor') }}</label>
             <div class="flex flex-wrap gap-2">
               <button
                 v-for="color in COLORS"
@@ -206,9 +215,9 @@ async function handleDeleteFolder(id: number) {
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" @click="newFolderOpen = false">取消</Button>
+          <Button variant="outline" @click="newFolderOpen = false">{{ t('common.cancel') }}</Button>
           <Button @click="saveFolder" :disabled="!newFolderName.trim()">
-            {{ editingFolderId ? '保存' : '创建' }}
+            {{ editingFolderId ? t('common.save') : t('common.create') }}
           </Button>
         </DialogFooter>
       </DialogContent>

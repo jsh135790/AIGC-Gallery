@@ -20,6 +20,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import DropZone from '@/components/common/DropZone.vue'
+import { useI18n } from '@/composables/useI18n'
 import type { Artist } from '@/types'
 import { ARTIST_CATEGORIES } from '@/types'
 
@@ -33,6 +34,8 @@ const emit = defineEmits<{
   save: [data: Omit<Artist, 'id' | 'createdAt' | 'updatedAt'>]
   delete: [id: number]
 }>()
+
+const { t, translateCategory } = useI18n()
 
 const form = reactive({
   name: '',
@@ -143,35 +146,35 @@ function cancel() {
   <Sheet :open="open" @update:open="emit('update:open', $event)">
     <SheetContent side="right" class="w-full sm:max-w-lg overflow-y-auto glass-heavy">
       <SheetHeader>
-        <SheetTitle>{{ editArtist ? '编辑画师' : '添加画师' }}</SheetTitle>
+        <SheetTitle>{{ editArtist ? t('artist.editArtist') : t('artist.addArtist') }}</SheetTitle>
         <SheetDescription>
-          {{ editArtist ? '修改画师信息' : '填写画师串信息并上传示例图片' }}
+          {{ editArtist ? t('artist.editDescription') : t('artist.formDescription') }}
         </SheetDescription>
       </SheetHeader>
 
       <div class="mt-6 space-y-5 px-1">
         <!-- Name -->
         <div class="space-y-2">
-          <label class="text-sm font-medium">画师名称 <span class="text-destructive">*</span></label>
-          <Input v-model="form.name" placeholder="如：wlop" />
+          <label class="text-sm font-medium">{{ t('artist.name') }} <span class="text-destructive">*</span></label>
+          <Input v-model="form.name" placeholder="wlop" />
         </div>
 
         <!-- Prompt -->
         <div class="space-y-2">
-          <label class="text-sm font-medium">画师串 <span class="text-destructive">*</span></label>
-          <Input v-model="form.prompt" placeholder="如：artist:wlop" class="font-mono text-sm" />
+          <label class="text-sm font-medium">{{ t('artist.prompt') }} <span class="text-destructive">*</span></label>
+          <Input v-model="form.prompt" placeholder="artist:wlop" class="font-mono text-sm" />
         </div>
 
         <!-- Category -->
         <div class="space-y-2">
-          <label class="text-sm font-medium">风格分类</label>
+          <label class="text-sm font-medium">{{ t('artist.category') }}</label>
           <Select v-model="form.category">
             <SelectTrigger>
-              <SelectValue placeholder="选择分类" />
+              <SelectValue :placeholder="translateCategory(form.category)" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem v-for="cat in ARTIST_CATEGORIES" :key="cat" :value="cat">
-                {{ cat }}
+                {{ translateCategory(cat) }}
               </SelectItem>
             </SelectContent>
           </Select>
@@ -179,7 +182,7 @@ function cancel() {
 
         <!-- Rating -->
         <div class="space-y-2">
-          <label class="text-sm font-medium">评分</label>
+          <label class="text-sm font-medium">{{ t('artist.rating') }}</label>
           <div class="flex gap-1">
             <button
               v-for="n in 5"
@@ -197,11 +200,11 @@ function cancel() {
 
         <!-- Tags -->
         <div class="space-y-2">
-          <label class="text-sm font-medium">标签</label>
+          <label class="text-sm font-medium">{{ t('artist.tags') }}</label>
           <div class="flex gap-2">
             <Input
               v-model="newTag"
-              placeholder="输入标签，回车添加"
+              :placeholder="t('artist.tagInputPlaceholder')"
               class="flex-1"
               @keydown.enter.prevent="addTag"
             />
@@ -225,13 +228,13 @@ function cancel() {
 
         <!-- Image (single) -->
         <div class="space-y-2">
-          <label class="text-sm font-medium">示例图片</label>
+          <label class="text-sm font-medium">{{ t('artist.sampleImage') }}</label>
           <DropZone
             v-if="imagePreviews.length === 0"
             @files="handleFiles"
             :multiple="false"
-            label="添加示例图"
-            sublabel="1 张示例图片"
+            :label="t('artist.addSampleImage')"
+            :sublabel="t('artist.sampleImageHint')"
           />
           <div v-if="imagePreviews.length" class="pt-2">
             <div class="group relative aspect-3/4 max-w-[200px] overflow-hidden rounded-lg border border-border/50">
@@ -257,14 +260,14 @@ function cancel() {
           @click="handleDelete"
         >
           <Trash2 class="h-4 w-4" />
-          删除画师
+          {{ t('artist.deleteArtist') }}
         </Button>
-        <Button variant="outline" @click="cancel">取消</Button>
+        <Button variant="outline" @click="cancel">{{ t('common.cancel') }}</Button>
         <Button
           @click="save"
           :disabled="!form.name.trim() || !form.prompt.trim()"
         >
-          {{ editArtist ? '保存修改' : '添加画师' }}
+          {{ editArtist ? t('artist.saveChanges') : t('artist.addArtist') }}
         </Button>
       </SheetFooter>
     </SheetContent>

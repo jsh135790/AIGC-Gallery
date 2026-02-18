@@ -4,12 +4,14 @@ import { ref, computed } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { useI18n } from '@/composables/useI18n'
 import type { AIGCImage } from '@/types'
 
 const props = defineProps<{
   image: AIGCImage
 }>()
 
+const { t } = useI18n()
 const copiedField = ref<string | null>(null)
 
 async function copyText(text: string, field: string) {
@@ -39,7 +41,7 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
   <div class="space-y-4 text-sm">
     <!-- Source badge -->
     <div class="flex items-center gap-2">
-      <span class="text-muted-foreground">来源</span>
+      <span class="text-muted-foreground">{{ t('metadata.source') }}</span>
       <Badge
         variant="outline"
         :class="{
@@ -55,7 +57,7 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
     <!-- Prompt -->
     <div v-if="image.prompt" class="space-y-1.5">
       <div class="flex items-center justify-between">
-        <span class="font-medium text-xs uppercase tracking-wider text-muted-foreground">正向提示词</span>
+        <span class="font-medium text-xs uppercase tracking-wider text-muted-foreground">{{ t('metadata.prompt') }}</span>
         <Button
           variant="ghost"
           size="icon"
@@ -74,7 +76,7 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
     <!-- Negative Prompt -->
     <div v-if="image.negativePrompt" class="space-y-1.5">
       <div class="flex items-center justify-between">
-        <span class="font-medium text-xs uppercase tracking-wider text-muted-foreground">负向提示词</span>
+        <span class="font-medium text-xs uppercase tracking-wider text-muted-foreground">{{ t('metadata.negativePrompt') }}</span>
         <Button
           variant="ghost"
           size="icon"
@@ -95,17 +97,17 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
       <div class="flex items-center gap-1.5">
         <Users class="h-3.5 w-3.5 text-muted-foreground" />
         <span class="font-medium text-xs uppercase tracking-wider text-muted-foreground">
-          角色提示词(NAI)
+          {{ t('metadata.characterPrompts') }}
         </span>
         <Badge variant="outline" class="text-[10px] px-1.5 py-0">
-          {{ image.v4Data.characters.length }} 个角色
+          {{ t('metadata.characterCount', { count: String(image.v4Data.characters.length) }) }}
         </Badge>
       </div>
 
       <!-- v4 Base Prompt (if different from main prompt) -->
       <div v-if="image.v4Data.basePrompt && image.v4Data.basePrompt !== image.prompt" class="space-y-1">
         <div class="flex items-center justify-between">
-          <span class="text-[11px] text-muted-foreground">全局正向提示词</span>
+          <span class="text-[11px] text-muted-foreground">{{ t('metadata.globalPrompt') }}</span>
           <Button
             variant="ghost"
             size="icon"
@@ -128,10 +130,10 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
         class="rounded-lg border border-border/40 bg-muted/20 p-2.5 space-y-1.5"
       >
         <div class="flex items-center justify-between">
-          <span class="text-xs font-medium">角色 {{ char.idx }}</span>
+          <span class="text-xs font-medium">{{ t('metadata.character', { idx: String(char.idx) }) }}</span>
           <div v-if="char.centers.length" class="flex items-center gap-1 text-[10px] text-muted-foreground">
             <MapPin class="h-3 w-3" />
-            <span v-if="isAutoPosition(char.centers)">AI 自动选择</span>
+            <span v-if="isAutoPosition(char.centers)">{{ t('metadata.autoPosition') }}</span>
             <span
               v-else
               v-for="(pt, pi) in char.centers"
@@ -191,7 +193,7 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
 
     <!-- Parameters -->
     <div v-if="paramEntries.length" class="space-y-1.5">
-      <span class="font-medium text-xs uppercase tracking-wider text-muted-foreground">生成参数</span>
+      <span class="font-medium text-xs uppercase tracking-wider text-muted-foreground">{{ t('metadata.parameters') }}</span>
       <div class="rounded-lg bg-muted/50 p-3">
         <div class="grid grid-cols-2 gap-x-4 gap-y-2">
           <div v-for="[key, value] in paramEntries" :key="key" class="flex items-baseline justify-between gap-2">
@@ -206,15 +208,15 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
 
     <!-- File info -->
     <div class="space-y-1.5">
-      <span class="font-medium text-xs uppercase tracking-wider text-muted-foreground">文件信息</span>
+      <span class="font-medium text-xs uppercase tracking-wider text-muted-foreground">{{ t('metadata.fileInfo') }}</span>
       <div class="grid grid-cols-2 gap-2 text-xs">
         <div>
-          <span class="text-muted-foreground">文件名</span>
+          <span class="text-muted-foreground">{{ t('metadata.filename') }}</span>
           <p class="font-medium truncate">{{ image.filename }}</p>
         </div>
         <div>
-          <span class="text-muted-foreground">添加时间</span>
-          <p class="font-medium">{{ new Date(image.createdAt).toLocaleDateString('zh-CN') }}</p>
+          <span class="text-muted-foreground">{{ t('metadata.addedTime') }}</span>
+          <p class="font-medium">{{ new Date(image.createdAt).toLocaleDateString() }}</p>
         </div>
       </div>
     </div>

@@ -7,6 +7,7 @@ import {
 } from 'lucide-vue-next'
 import { useAigcStore } from '@/stores/aigcStore'
 import { useToast } from '@/composables/useToast'
+import { useI18n } from '@/composables/useI18n'
 import { parseImageMetadata, generateThumbnail, getTagsFromPrompt } from '@/lib/parser'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -28,6 +29,7 @@ import type { AIGCImage } from '@/types'
 
 const store = useAigcStore()
 const toast = useToast()
+const { t } = useI18n()
 
 const sidebarOpen = ref(true)
 const detailImageId = ref<number | null>(null)
@@ -103,14 +105,14 @@ async function handleUpload(files: File[]) {
       })
     } catch (err) {
       console.error(`Failed to process ${file.name}:`, err)
-      toast.error(`处理 ${file.name} 失败`)
+      toast.error(t('aigc.uploadFailed', { filename: file.name }))
     }
     uploadProgress.value = Math.round(((i + 1) / total) * 100)
   }
 
   isUploading.value = false
   uploadProgress.value = 0
-  toast.success(`成功上传 ${total} 张图片`)
+  toast.success(t('aigc.uploadSuccess', { count: String(total) }))
 }
 
 function viewImage(image: AIGCImage) {
@@ -156,13 +158,18 @@ async function batchDelete() {
   await store.deleteImages(ids)
   selectedIds.value.clear()
   selectMode.value = false
-  toast.success(`已删除 ${count} 张图片`)
+  toast.success(t('aigc.deleteSuccess', { count: String(count) }))
 }
 
 // Reactive current nav label
 const currentFolderLabel = computed(() => {
   const item = store.folderNavItems.find(f => f.id === store.selectedFolderId)
-  return item?.name || '全部图片'
+  if (!item) return t('aigc.allImages')
+  // Translate system folder names
+  if (item.id === 'all') return t('aigc.allImages')
+  if (item.id === 'uncategorized') return t('aigc.uncategorized')
+  if (item.id === 'favorites') return t('common.favorites')
+  return item.name
 })
 </script>
 
@@ -197,7 +204,7 @@ const currentFolderLabel = computed(() => {
 
           <SearchBar
             v-model="store.searchQuery"
-            placeholder="搜索文件名、提示词或标签..."
+            :placeholder="t('aigc.searchPlaceholder')"
             class="flex-1 max-w-sm"
           />
 
@@ -211,17 +218,17 @@ const currentFolderLabel = computed(() => {
               @click="selectMode ? exitSelectMode() : (selectMode = true)"
             >
               <CheckSquare class="h-3.5 w-3.5" />
-              <span class="hidden sm:inline text-xs">{{ selectMode ? '退出' : '选择' }}</span>
+              <span class="hidden sm:inline text-xs">{{ selectMode ? t('common.exit') : t('common.select') }}</span>
             </Button>
 
             <!-- Batch actions -->
             <template v-if="selectMode && selectedIds.size > 0">
               <Button variant="outline" size="sm" class="gap-1.5 h-8" @click="selectAll">
-                {{ selectedIds.size === store.filteredImages.length ? '取消全选' : '全选' }}
+                {{ selectedIds.size === store.filteredImages.length ? t('common.deselectAll') : t('common.selectAll') }}
               </Button>
               <Button variant="destructive" size="sm" class="gap-1.5 h-8" @click="batchDelete">
                 <Trash2 class="h-3.5 w-3.5" />
-                删除 ({{ selectedIds.size }})
+                {{ t('aigc.deleteSelected', { count: String(selectedIds.size) }) }}
               </Button>
             </template>
 
@@ -229,18 +236,18 @@ const currentFolderLabel = computed(() => {
               <DropdownMenuTrigger as-child>
                 <Button variant="outline" size="sm" class="gap-1.5 h-8">
                   <ArrowUpDown class="h-3.5 w-3.5" />
-                  <span class="hidden sm:inline text-xs">排序</span>
+                  <span class="hidden sm:inline text-xs">{{ t('common.sort') }}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem @click="store.sortField = 'createdAt'; store.sortOrder = 'desc'">
-                  最新上传
+                  {{ t('aigc.sortNewest') }}
                 </DropdownMenuItem>
                 <DropdownMenuItem @click="store.sortField = 'createdAt'; store.sortOrder = 'asc'">
-                  最早上传
+                  {{ t('aigc.sortOldest') }}
                 </DropdownMenuItem>
                 <DropdownMenuItem @click="store.sortField = 'filename'; store.sortOrder = 'asc'">
-                  文件名 A-Z
+                  {{ t('aigc.sortFilename') }}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -262,7 +269,7 @@ const currentFolderLabel = computed(() => {
 
         <!-- Active tag filters -->
         <div v-if="store.selectedTags.length" class="mt-2 flex items-center gap-1.5 flex-wrap">
-          <span class="text-xs text-muted-foreground">筛选标签:</span>
+          <span class="text-xs text-muted-foreground">{{ t('aigc.filterTags') }}</span>
           <Badge
             v-for="tag in store.selectedTags"
             :key="tag"
@@ -290,7 +297,7 @@ const currentFolderLabel = computed(() => {
         <div v-else-if="store.filteredImages.length === 0 && !store.searchQuery" class="max-w-lg mx-auto mt-8">
           <DropZone @files="handleUpload" />
           <p class="mt-4 text-center text-sm text-muted-foreground">
-            上传图片后将自动解析 SD / NovelAI 元数据
+            {{ t('aigc.uploadHint') }}
           </p>
         </div>
 
@@ -299,9 +306,9 @@ const currentFolderLabel = computed(() => {
           v-else-if="store.filteredImages.length === 0 && store.searchQuery"
           class="flex flex-col items-center py-20 text-center"
         >
-          <p class="text-muted-foreground">没有找到匹配的图片</p>
+          <p class="text-muted-foreground">{{ t('aigc.noResults') }}</p>
           <Button variant="link" size="sm" class="mt-2" @click="store.searchQuery = ''">
-            清除搜索
+            {{ t('aigc.clearSearch') }}
           </Button>
         </div>
 
@@ -311,12 +318,12 @@ const currentFolderLabel = computed(() => {
           <DropZone
             class="mb-4"
             @files="handleUpload"
-            label="继续上传图片"
-            sublabel="拖拽或点击添加更多图片"
+            :label="t('aigc.continueUpload')"
+            :sublabel="t('aigc.continueUploadHint')"
           />
 
           <p class="mb-3 text-xs text-muted-foreground">
-            {{ store.filteredImages.length }} 张图片
+            {{ t('aigc.imageCount', { count: String(store.filteredImages.length) }) }}
           </p>
 
           <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, toRef } from 'vue'
 import { X, ZoomIn, ZoomOut, Download } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
+import { useScrollLock } from '@/composables/useScrollLock'
 
 const props = defineProps<{
   src: string
@@ -15,6 +16,9 @@ const emit = defineEmits<{
 
 const scale = ref(1)
 const imgLoaded = ref(false)
+
+// Lock body scroll when lightbox is open
+useScrollLock(toRef(props, 'open'))
 
 function close() {
   emit('update:open', false)
@@ -49,21 +53,12 @@ function onWheel(e: WheelEvent) {
   else zoomOut()
 }
 
-watch(() => props.open, (val) => {
-  if (val) {
-    document.body.style.overflow = 'hidden'
-  } else {
-    document.body.style.overflow = ''
-  }
-})
-
 onMounted(() => {
   window.addEventListener('keydown', onKeyDown)
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onKeyDown)
-  document.body.style.overflow = ''
 })
 </script>
 

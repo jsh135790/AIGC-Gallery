@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { ref, watch, onUnmounted } from 'vue'
+import { ref, watch, onUnmounted, computed, toRef } from 'vue'
 import {
   X, Heart, Trash2, FolderInput, Tag,
   ChevronLeft, ChevronRight, Maximize2,
 } from 'lucide-vue-next'
 import { useAigcStore } from '@/stores/aigcStore'
 import { useToast } from '@/composables/useToast'
+import { useI18n } from '@/composables/useI18n'
+import { useScrollLock } from '@/composables/useScrollLock'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -34,9 +36,18 @@ const emit = defineEmits<{
 
 const store = useAigcStore()
 const toast = useToast()
+const { t } = useI18n()
 const imageUrl = ref('')
 const newTag = ref('')
-const moveToFolder = ref<string>('')
+
+// Lock body scroll when panel is open
+useScrollLock(toRef(props, 'open'))
+
+// Compute current folder value for the select
+const currentFolderValue = computed(() => {
+  if (!props.image) return 'none'
+  return props.image.folderId ? String(props.image.folderId) : 'none'
+})
 
 watch(() => props.image, (img) => {
   if (imageUrl.value) URL.revokeObjectURL(imageUrl.value)
@@ -59,14 +70,14 @@ async function toggleFav() {
   if (props.image?.id) {
     const wasFavorite = props.image.isFavorite
     await store.toggleImageFavorite(props.image.id)
-    toast.success(wasFavorite ? '已取消收藏' : '已收藏')
+    toast.success(wasFavorite ? t('detail.unfavorited') : t('detail.favorited'))
   }
 }
 
 async function deleteImage() {
   if (props.image?.id) {
     await store.deleteImage(props.image.id)
-    toast.success('图片已删除')
+    toast.success(t('detail.imageDeleted'))
     close()
   }
 }
@@ -88,10 +99,11 @@ async function removeTag(tag: string) {
 async function handleMoveFolder(folderId: unknown) {
   if (!props.image?.id) return
   const id = String(folderId)
+  // Don't do anything if selecting the same folder
+  if (id === currentFolderValue.value) return
   const numId = id === 'none' ? null : parseInt(id)
   await store.moveImagesToFolder([props.image.id], numId)
-  moveToFolder.value = ''
-  toast.success('已移动到分类')
+  toast.success(t('detail.movedToFolder'))
 }
 </script>
 
@@ -151,7 +163,7 @@ async function handleMoveFolder(folderId: unknown) {
 
           <!-- Tags -->
           <div class="space-y-2">
-            <span class="font-medium text-xs uppercase tracking-wider text-muted-foreground">标签</span>
+            <span class="font-medium text-xs uppercase tracking-wider text-muted-foreground">{{ t('detail.tags') }}</span>
             <div class="flex flex-wrap gap-1.5">
               <TagBadge
                 v-for="tag in image.tags"
@@ -160,12 +172,12 @@ async function handleMoveFolder(folderId: unknown) {
                 removable
                 @remove="removeTag"
               />
-              <span v-if="!image.tags.length" class="text-xs text-muted-foreground">暂无标签</span>
+              <span v-if="!image.tags.length" class="text-xs text-muted-foreground">{{ t('detail.noTags') }}</span>
             </div>
             <div class="flex gap-2">
               <Input
                 v-model="newTag"
-                placeholder="添加标签"
+                :placeholder="t('detail.addTag')"
                 class="h-8 text-xs"
                 @keydown.enter.prevent="addTag"
               />
@@ -179,13 +191,13 @@ async function handleMoveFolder(folderId: unknown) {
 
           <!-- Move to folder -->
           <div class="space-y-2">
-            <span class="font-medium text-xs uppercase tracking-wider text-muted-foreground">移动到分类</span>
-            <Select :model-value="moveToFolder" @update:model-value="handleMoveFolder">
+            <span class="font-medium text-xs uppercase tracking-wider text-muted-foreground">{{ t('detail.moveToFolder') }}</span>
+            <Select :model-value="currentFolderValue" @update:model-value="handleMoveFolder">
               <SelectTrigger class="h-8 text-xs">
-                <SelectValue placeholder="选择分类..." />
+                <SelectValue :placeholder="t('detail.selectFolder')" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">未分类</SelectItem>
+                <SelectItem value="none">{{ t('aigc.uncategorized') }}</SelectItem>
                 <SelectItem
                   v-for="folder in store.folders"
                   :key="folder.id"
@@ -206,7 +218,7 @@ async function handleMoveFolder(folderId: unknown) {
               @click="deleteImage"
             >
               <Trash2 class="h-4 w-4" />
-              删除图片
+              {{ t('detail.deleteImage') }}
             </Button>
           </div>
         </div>

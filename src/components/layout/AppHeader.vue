@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Sparkles, Palette, Images, Github, Info, X, MessageCircle } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
@@ -11,15 +11,18 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import ThemeToggle from './ThemeToggle.vue'
+import LanguageToggle from './LanguageToggle.vue'
+import { useI18n } from '@/composables/useI18n'
 
 const route = useRoute()
 const router = useRouter()
 const aboutOpen = ref(false)
+const { t } = useI18n()
 
-const navItems = [
-  { path: '/gallery', label: '画师串画廊', icon: Palette },
-  { path: '/aigc', label: 'AIGC 图库', icon: Images },
-]
+const navItems = computed(() => [
+  { path: '/gallery', label: t('nav.artistGallery'), icon: Palette },
+  { path: '/aigc', label: t('nav.aigcManager'), icon: Images },
+])
 </script>
 
 <template>
@@ -83,8 +86,11 @@ const navItems = [
           @click="aboutOpen = true"
         >
           <Info class="h-4 w-4" />
-          <span class="sr-only">关于</span>
+          <span class="sr-only">{{ t('nav.about') }}</span>
         </Button>
+
+        <!-- Language -->
+        <LanguageToggle />
 
         <!-- Theme -->
         <ThemeToggle />
@@ -96,8 +102,8 @@ const navItems = [
   <Dialog :open="aboutOpen" @update:open="aboutOpen = $event">
     <DialogContent class="max-w-sm glass-heavy">
       <DialogHeader>
-        <DialogTitle class="text-lg">关于 AIGC Gallery</DialogTitle>
-        <DialogDescription>本地 AI 生成图片管理工具</DialogDescription>
+        <DialogTitle class="text-lg">{{ t('about.title') }}</DialogTitle>
+        <DialogDescription>{{ t('about.description') }}</DialogDescription>
       </DialogHeader>
 
       <div class="mt-4 flex flex-col items-center gap-4">
@@ -125,7 +131,7 @@ const navItems = [
         <!-- QQ Group -->
         <div class="flex items-center gap-2 rounded-lg bg-muted/50 px-4 py-2.5 text-sm">
           <MessageCircle class="h-4 w-4 text-muted-foreground shrink-0" />
-          <span class="text-muted-foreground">反馈/交流群：</span>
+          <span class="text-muted-foreground">{{ t('about.feedbackGroup') }}</span>
           <span class="font-mono font-medium">1046260326</span>
         </div>
       </div>

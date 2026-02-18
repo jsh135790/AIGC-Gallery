@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Upload, ImagePlus } from 'lucide-vue-next'
+import { useI18n } from '@/composables/useI18n'
+
+const { t } = useI18n()
 
 const props = withDefaults(defineProps<{
   accept?: string
@@ -10,9 +13,11 @@ const props = withDefaults(defineProps<{
 }>(), {
   accept: 'image/png,image/jpeg,image/webp',
   multiple: true,
-  label: '拖拽图片到此处上传',
-  sublabel: '或点击选择文件 · 支持 PNG / JPEG / WebP',
 })
+
+// Use i18n defaults if not provided
+const displayLabel = computed(() => props.label ?? t('dropzone.label'))
+const displaySublabel = computed(() => props.sublabel ?? t('dropzone.sublabel'))
 
 const emit = defineEmits<{
   files: [files: File[]]
@@ -72,10 +77,10 @@ function handleFileChange(e: Event) {
     </div>
     <div class="text-center">
       <p class="text-sm font-medium" :class="isDragOver ? 'text-primary' : 'text-foreground'">
-        {{ label }}
+        {{ displayLabel }}
       </p>
       <p class="mt-1 text-xs text-muted-foreground">
-        {{ sublabel }}
+        {{ displaySublabel }}
       </p>
     </div>
     <input

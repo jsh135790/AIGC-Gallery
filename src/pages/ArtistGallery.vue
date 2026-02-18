@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { Plus, Heart, ArrowUpDown, Download, Upload, SlidersHorizontal } from 'lucide-vue-next'
 import { useArtistStore } from '@/stores/artistStore'
 import { useToast } from '@/composables/useToast'
+import { useI18n } from '@/composables/useI18n'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -25,6 +26,7 @@ import type { Artist } from '@/types'
 
 const store = useArtistStore()
 const toast = useToast()
+const { t, translateCategory } = useI18n()
 
 const formOpen = ref(false)
 const editingArtist = ref<Artist | null>(null)
@@ -48,16 +50,16 @@ function openEdit(artist: Artist) {
 async function handleSave(data: Omit<Artist, 'id' | 'createdAt' | 'updatedAt'>) {
   if (editingArtist.value?.id) {
     await store.updateArtist(editingArtist.value.id, data)
-    toast.success('画师信息已更新')
+    toast.success(t('artist.updated'))
   } else {
     await store.addArtist(data)
-    toast.success('画师已添加')
+    toast.success(t('artist.added'))
   }
 }
 
 async function handleDelete(id: number) {
   await store.deleteArtist(id)
-  toast.success('画师已删除')
+  toast.success(t('artist.deleted'))
 }
 
 async function handleExport() {
@@ -69,7 +71,7 @@ async function handleExport() {
   a.download = `artist-favorites-${new Date().toISOString().slice(0, 10)}.json`
   a.click()
   URL.revokeObjectURL(url)
-  toast.success('收藏已导出')
+  toast.success(t('artist.exportSuccess'))
 }
 
 function handleImportClick() {
@@ -82,14 +84,14 @@ async function handleImport(e: Event) {
   try {
     const text = await file.text()
     await store.importArtists(text)
-    toast.success('数据导入成功')
+    toast.success(t('artist.importSuccess'))
   } catch {
-    toast.error('导入失败，请检查文件格式')
+    toast.error(t('artist.importFailed'))
   }
 }
 
 function copyPrompt(prompt: string) {
-  toast.success('画师串已复制')
+  toast.success(t('artist.promptCopied'))
 }
 </script>
 
@@ -100,21 +102,21 @@ function copyPrompt(prompt: string) {
       <div class="flex flex-1 items-center gap-3">
         <SearchBar
           v-model="store.searchQuery"
-          placeholder="搜索画师名称、画师串或标签..."
+          :placeholder="t('artist.searchPlaceholder')"
           class="flex-1 max-w-sm"
         />
         <Select v-model="store.selectedCategory">
           <SelectTrigger class="w-[120px] bg-muted/50">
-            <SelectValue placeholder="全部分类" />
+            <SelectValue :placeholder="t('artist.allCategories')" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">全部分类</SelectItem>
+            <SelectItem value="all">{{ t('artist.allCategories') }}</SelectItem>
             <SelectItem
               v-for="cat in store.categories.filter(c => c !== 'all')"
               :key="cat"
               :value="cat"
             >
-              {{ cat }}
+              {{ translateCategory(cat) }}
             </SelectItem>
           </SelectContent>
         </Select>
@@ -129,52 +131,52 @@ function copyPrompt(prompt: string) {
           @click="store.showFavoritesOnly = !store.showFavoritesOnly"
         >
           <Heart class="h-4 w-4" :class="store.showFavoritesOnly && 'fill-current'" />
-          <span class="hidden sm:inline">收藏</span>
+          <span class="hidden sm:inline">{{ t('common.favorites') }}</span>
         </Button>
 
         <DropdownMenu>
           <DropdownMenuTrigger as-child>
             <Button variant="outline" size="sm" class="gap-1.5">
               <SlidersHorizontal class="h-4 w-4" />
-              <span class="hidden sm:inline">更多</span>
+              <span class="hidden sm:inline">{{ t('common.more') }}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem @click="handleExport" class="gap-2">
               <Download class="h-4 w-4" />
-              导出收藏
+              {{ t('artist.exportFavorites') }}
             </DropdownMenuItem>
             <DropdownMenuItem @click="handleImportClick" class="gap-2">
               <Upload class="h-4 w-4" />
-              导入数据
+              {{ t('artist.importData') }}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem @click="store.sortField = 'name'; store.sortOrder = 'asc'" class="gap-2">
               <ArrowUpDown class="h-4 w-4" />
-              按名称排序
+              {{ t('artist.sortByName') }}
             </DropdownMenuItem>
             <DropdownMenuItem @click="store.sortField = 'rating'; store.sortOrder = 'desc'" class="gap-2">
               <ArrowUpDown class="h-4 w-4" />
-              按评分排序
+              {{ t('artist.sortByRating') }}
             </DropdownMenuItem>
             <DropdownMenuItem @click="store.sortField = 'createdAt'; store.sortOrder = 'desc'" class="gap-2">
               <ArrowUpDown class="h-4 w-4" />
-              按时间排序
+              {{ t('artist.sortByTime') }}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
         <Button size="sm" class="gap-1.5" @click="openAdd">
           <Plus class="h-4 w-4" />
-          <span class="hidden sm:inline">添加画师</span>
+          <span class="hidden sm:inline">{{ t('artist.addArtist') }}</span>
         </Button>
       </div>
     </div>
 
     <!-- Results count -->
     <p class="mb-4 text-sm text-muted-foreground">
-      共 {{ store.filteredArtists.length }} 位画师
-      <span v-if="store.searchQuery">（搜索: "{{ store.searchQuery }}"）</span>
+      {{ t('artist.totalCount', { count: String(store.filteredArtists.length) }) }}
+      <span v-if="store.searchQuery">{{ t('artist.searchResult', { query: store.searchQuery }) }}</span>
     </p>
 
     <!-- Grid -->
