@@ -29,19 +29,42 @@ export async function extractPngTextChunks(file: File): Promise<PngTextChunk[]> 
 }
 
 /**
- * Decode an iTXt chunk, handling the NovelAI Description format.
+ * Decode an iTXt chunk, properly extracting the keyword.
+ * iTXt format: keyword\0compression_flag\0compression_method\0language_tag\0translated_keyword\0text
  */
 function decodeITXtChunk(data: Uint8Array): PngTextChunk {
-  const filtered = data.filter(x => x !== 0x00)
-  const header = new TextDecoder().decode(filtered.slice(0, 11))
-
-  if (header === 'Description') {
-    const text = new TextDecoder().decode(filtered.slice(11))
-    return { keyword: 'Description', text }
+  // Find the first null byte (end of keyword)
+  let keywordEnd = 0
+  for (let i = 0; i < data.length; i++) {
+    if (data[i] === 0x00) {
+      keywordEnd = i
+      break
+    }
   }
 
-  const text = new TextDecoder().decode(filtered)
-  return { keyword: 'Unknown', text }
+  const keyword = new TextDecoder().decode(data.slice(0, keywordEnd))
+
+  // Skip: keyword\0 + compression_flag(1) + compression_method(1) + language_tag\0 + translated_keyword\0
+  let textStart = keywordEnd + 1
+
+  // Skip compression flag and method (2 bytes)
+  textStart += 2
+
+  // Skip language tag (find next null)
+  while (textStart < data.length && data[textStart] !== 0x00) {
+    textStart++
+  }
+  textStart++ // skip the null
+
+  // Skip translated keyword (find next null)
+  while (textStart < data.length && data[textStart] !== 0x00) {
+    textStart++
+  }
+  textStart++ // skip the null
+
+  const text = new TextDecoder().decode(data.slice(textStart))
+
+  return { keyword, text }
 }
 
 /**

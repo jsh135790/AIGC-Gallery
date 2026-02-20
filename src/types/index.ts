@@ -43,6 +43,12 @@ export interface ImageParameters {
   model?: string
   clipSkip?: number
   denoisingStrength?: number
+  scheduler?: string
+  loras?: string
+  vae?: string
+  // ComfyUI specific
+  nodeCount?: number
+  nodeTypes?: string[]
   [key: string]: unknown
 }
 

@@ -23,10 +23,12 @@ async function copyText(text: string, field: string) {
 }
 
 const paramEntries = computed(() =>
-  Object.entries(props.image.parameters || {}).filter(
-    ([_, v]) => v !== undefined && v !== null && v !== ''
-  )
+  Object.entries(props.image.parameters || {})
+    .filter(([_, v]) => v !== undefined && v !== null && v !== '')
+    .filter(([k]) => k !== 'nodeTypes') // Exclude nodeTypes from regular params
 )
+
+const nodeTypes = computed(() => props.image.parameters?.nodeTypes as string[] | undefined)
 
 function formatCoord(val: number): string {
   return Math.round(val).toString()
@@ -50,7 +52,7 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
           'bg-green-500/10 text-green-500 border-green-500/30': image.source === 'comfyui',
         }"
       >
-        {{ image.source === 'sd' ? 'Stable Diffusion' : image.source === 'nai' ? 'NovelAI' : image.source }}
+        {{ image.source === 'sd' ? 'Stable Diffusion' : image.source === 'nai' ? 'NovelAI' : image.source === 'comfyui' ? 'ComfyUI' : image.source }}
       </Badge>
     </div>
 
@@ -200,6 +202,23 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
             <span class="text-xs text-muted-foreground capitalize">{{ key }}</span>
             <span class="text-xs font-mono font-medium truncate max-w-[120px]">{{ value }}</span>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ComfyUI Node Types -->
+    <div v-if="nodeTypes && nodeTypes.length" class="space-y-1.5">
+      <span class="font-medium text-xs uppercase tracking-wider text-muted-foreground">{{ t('metadata.nodeTypes') }}</span>
+      <div class="rounded-lg bg-muted/50 p-3 max-h-40 overflow-y-auto">
+        <div class="flex flex-wrap gap-1.5">
+          <Badge
+            v-for="nodeType in nodeTypes"
+            :key="nodeType"
+            variant="outline"
+            class="text-[10px] font-mono"
+          >
+            {{ nodeType }}
+          </Badge>
         </div>
       </div>
     </div>
