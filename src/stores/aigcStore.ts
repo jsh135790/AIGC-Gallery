@@ -135,50 +135,90 @@ export const useAigcStore = defineStore('aigc', () => {
   }
 
   async function deleteImage(id: number) {
+    // Remove from memory immediately
+    images.value = images.value.filter(i => i.id !== id)
+
+    // Delete from database in background
     await db.aigcImages.delete(id)
-    await loadAll()
   }
 
   async function deleteImages(ids: number[]) {
+    // Remove from memory immediately
+    images.value = images.value.filter(i => !ids.includes(i.id!))
+
+    // Delete from database in background
     await db.aigcImages.bulkDelete(ids)
-    await loadAll()
   }
 
   async function updateImage(id: number, data: Partial<AIGCImage>) {
     const clean = stripProxy(data as Record<string, unknown>)
-    await db.aigcImages.update(id, { ...clean, updatedAt: new Date() })
-    await loadAll()
+    const now = new Date()
+
+    // Update in memory immediately
+    const img = images.value.find(i => i.id === id)
+    if (img) {
+      Object.assign(img, clean, { updatedAt: now })
+    }
+
+    // Update in database in background
+    await db.aigcImages.update(id, { ...clean, updatedAt: now })
   }
 
   async function toggleImageFavorite(id: number) {
     const img = images.value.find(i => i.id === id)
     if (img) {
-      await db.aigcImages.update(id, { isFavorite: !img.isFavorite, updatedAt: new Date() })
-      await loadAll()
+      const newFavoriteState = !img.isFavorite
+      const now = new Date()
+
+      // Update in memory immediately for instant UI feedback
+      img.isFavorite = newFavoriteState
+      img.updatedAt = now
+
+      // Update in database in background
+      await db.aigcImages.update(id, { isFavorite: newFavoriteState, updatedAt: now })
     }
   }
 
   async function moveImagesToFolder(imageIds: number[], folderId: number | null) {
     const now = new Date()
+
+    // Update in memory immediately for instant UI feedback
+    for (const id of imageIds) {
+      const img = images.value.find(i => i.id === id)
+      if (img) {
+        img.folderId = folderId
+        img.updatedAt = now
+      }
+    }
+
+    // Update in database in background
     await Promise.all(
       imageIds.map(id => db.aigcImages.update(id, { folderId, updatedAt: now }))
     )
-    await loadAll()
   }
 
   async function batchAddTags(imageIds: number[], newTags: string[]) {
     const now = new Date()
+
+    // Update in memory immediately
     for (const id of imageIds) {
       const img = images.value.find(i => i.id === id)
       if (img) {
         const merged = [...new Set([...img.tags, ...newTags])]
+        img.tags = merged
+        img.updatedAt = now
+        // Update in database
         await db.aigcImages.update(id, { tags: merged, updatedAt: now })
       }
     }
+
+    // Update tag counts
     for (const t of newTags) {
       await upsertTag(t, 'manual')
     }
-    await loadAll()
+
+    // Reload tags to get updated counts
+    tags.value = await db.tags.toArray()
   }
 
   // ===== Folder CRUD =====
@@ -196,18 +236,33 @@ export const useAigcStore = defineStore('aigc', () => {
   }
 
   async function updateFolder(id: number, data: Partial<AIGCFolder>) {
-    await db.aigcFolders.update(id, { ...data, updatedAt: new Date() })
-    await loadAll()
+    const now = new Date()
+
+    // Update in memory immediately
+    const folder = folders.value.find(f => f.id === id)
+    if (folder) {
+      Object.assign(folder, data, { updatedAt: now })
+    }
+
+    // Update in database in background
+    await db.aigcFolders.update(id, { ...data, updatedAt: now })
   }
 
   async function deleteFolder(id: number) {
-    // Move images in this folder to uncategorized
+    // Update images in memory immediately
     const imagesInFolder = images.value.filter(i => i.folderId === id)
+    for (const img of imagesInFolder) {
+      img.folderId = null
+    }
+
+    // Remove folder from memory
+    folders.value = folders.value.filter(f => f.id !== id)
+
+    // Update database in background
     await Promise.all(
       imagesInFolder.map(i => db.aigcImages.update(i.id!, { folderId: null }))
     )
     await db.aigcFolders.delete(id)
-    await loadAll()
   }
 
   // ===== Tag CRUD =====

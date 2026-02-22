@@ -152,7 +152,7 @@ function getFolderName(item: FolderNavItem): string {
             <DropdownMenu v-if="!item.isSystem">
               <DropdownMenuTrigger as-child>
                 <button
-                  class="flex h-5 w-5 items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-muted transition-all"
+                  class="flex h-5 w-5 items-center justify-center rounded opacity-30 group-hover:opacity-100 hover:bg-muted transition-all"
                   @click.stop
                 >
                   <MoreHorizontal class="h-3.5 w-3.5" />
