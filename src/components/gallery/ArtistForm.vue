@@ -48,13 +48,14 @@ const form = reactive({
 const newTag = ref('')
 const imagePreviews = ref<string[]>([])
 
-// Pre-fill form when editing - watch both editArtist and its images array
-watch([() => props.editArtist, () => props.editArtist?.images], ([artist]) => {
+// Pre-fill form when editing - watch editArtist and open state together
+watch([() => props.editArtist, () => props.open], ([artist, isOpen]) => {
   // Clean up old preview URLs
   imagePreviews.value.forEach(url => URL.revokeObjectURL(url))
   imagePreviews.value = []
 
-  if (artist) {
+  // Only fill form when panel is opening with an artist
+  if (isOpen && artist) {
     form.name = artist.name
     form.prompt = artist.prompt
     form.category = artist.category
@@ -67,10 +68,12 @@ watch([() => props.editArtist, () => props.editArtist?.images], ([artist]) => {
     if (artist.images && artist.images.length > 0) {
       imagePreviews.value = artist.images.map(blob => URL.createObjectURL(blob))
     }
-  } else {
+  } else if (isOpen && !artist) {
+    // Opening for new artist
     resetForm()
   }
-}, { immediate: true, deep: true })
+  // Don't reset when closing (isOpen === false) to avoid unnecessary operations
+}, { immediate: true })
 
 function resetForm() {
   form.name = ''
