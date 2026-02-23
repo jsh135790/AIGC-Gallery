@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { Heart, Copy, Star, Eye } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useI18n } from '@/composables/useI18n'
 import type { Artist } from '@/types'
 
 const props = defineProps<{
@@ -16,16 +17,55 @@ const emit = defineEmits<{
   copy: [prompt: string]
 }>()
 
+const { t } = useI18n()
 const thumbnailUrl = ref<string | null>(null)
 const copied = ref(false)
 
-// Generate thumbnail URL from blob
-if (props.artist.images.length > 0) {
-  thumbnailUrl.value = URL.createObjectURL(props.artist.images[0])
-}
+// Watch for changes in artist.images and regenerate thumbnail URL
+watch(() => props.artist.images, (newImages) => {
+  // Revoke old URL to prevent memory leak
+  if (thumbnailUrl.value) {
+    URL.revokeObjectURL(thumbnailUrl.value)
+  }
+
+  // Generate new URL if images exist
+  if (newImages && newImages.length > 0) {
+    thumbnailUrl.value = URL.createObjectURL(newImages[0])
+  } else {
+    thumbnailUrl.value = null
+  }
+}, { immediate: true })
+
+// Clean up on unmount
+onUnmounted(() => {
+  if (thumbnailUrl.value) {
+    URL.revokeObjectURL(thumbnailUrl.value)
+  }
+})
 
 const stars = computed(() => {
   return Array.from({ length: 5 }, (_, i) => i < (props.artist.rating || 0))
+})
+
+// Translate category name
+const translatedCategory = computed(() => {
+  if (!props.artist.category) return ''
+
+  // Map Chinese category names to translation keys
+  const categoryMap: Record<string, string> = {
+    '写实': 'category.realistic',
+    '二次元': 'category.anime',
+    '半写实': 'category.semiRealistic',
+    '概念艺术': 'category.conceptArt',
+    '水彩风': 'category.watercolor',
+    '油画风': 'category.oilPainting',
+    '插画': 'category.illustration',
+    '像素风': 'category.pixelArt',
+    '其他': 'category.other',
+  }
+
+  const key = categoryMap[props.artist.category]
+  return key ? t(key) : props.artist.category
 })
 
 async function copyPrompt() {
@@ -76,7 +116,7 @@ async function copyPrompt() {
         variant="secondary"
         class="absolute top-2 left-2 bg-black/30 text-white backdrop-blur-sm border-none text-xs"
       >
-        {{ artist.category }}
+        {{ translatedCategory }}
       </Badge>
     </div>
 
@@ -110,7 +150,7 @@ async function copyPrompt() {
             </button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>{{ copied ? '已复制!' : '点击复制画师串' }}</p>
+            <p>{{ copied ? t('common.copied') : t('artist.copyPrompt') }}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

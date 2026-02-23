@@ -43,7 +43,9 @@ function openAdd() {
 
 // Clicking a card opens the edit form directly
 function openEdit(artist: Artist) {
-  editingArtist.value = artist
+  // Always get the latest data from store to ensure reactivity
+  const latestArtist = store.artists.find(a => a.id === artist.id)
+  editingArtist.value = latestArtist || artist
   formOpen.value = true
 }
 

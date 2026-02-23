@@ -152,6 +152,14 @@ function exitSelectMode() {
   selectedIds.value.clear()
 }
 
+async function handleToggleFavorite(id: number) {
+  const image = store.images.find(i => i.id === id)
+  if (!image) return
+  const wasFavorite = image.isFavorite
+  await store.toggleImageFavorite(id)
+  toast.success(wasFavorite ? t('detail.unfavorited') : t('detail.favorited'))
+}
+
 async function batchDelete() {
   const ids = Array.from(selectedIds.value)
   const count = ids.length
@@ -333,7 +341,7 @@ const currentFolderLabel = computed(() => {
               :image="image"
               :selected="selectedIds.has(image.id!)"
               @click="viewImage"
-              @toggle-favorite="store.toggleImageFavorite($event)"
+              @toggle-favorite="handleToggleFavorite"
             />
           </div>
         </template>

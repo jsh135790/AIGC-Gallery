@@ -91,20 +91,43 @@ export const useArtistStore = defineStore('artist', () => {
 
   async function updateArtist(id: number, data: Partial<Artist>) {
     const clean = stripProxy(data as Record<string, unknown>)
-    await db.artists.update(id, { ...clean, updatedAt: new Date() })
-    await loadArtists()
+    const now = new Date()
+
+    // Update in memory immediately
+    const artist = artists.value.find(a => a.id === id)
+    if (artist) {
+      // For images/blobs, we need to replace the entire array to trigger reactivity
+      if (clean.images) {
+        artist.images = Array.from(clean.images as Blob[])
+      }
+      // Update other fields
+      Object.assign(artist, { ...clean, updatedAt: now })
+    }
+
+    // Update in database in background
+    await db.artists.update(id, { ...clean, updatedAt: now })
   }
 
   async function deleteArtist(id: number) {
+    // Remove from memory immediately
+    artists.value = artists.value.filter(a => a.id !== id)
+
+    // Delete from database in background
     await db.artists.delete(id)
-    await loadArtists()
   }
 
   async function toggleFavorite(id: number) {
     const artist = artists.value.find(a => a.id === id)
     if (artist) {
-      await db.artists.update(id, { isFavorite: !artist.isFavorite, updatedAt: new Date() })
-      await loadArtists()
+      const newFavoriteState = !artist.isFavorite
+      const now = new Date()
+
+      // Update in memory immediately for instant UI feedback
+      artist.isFavorite = newFavoriteState
+      artist.updatedAt = now
+
+      // Update in database in background
+      await db.artists.update(id, { isFavorite: newFavoriteState, updatedAt: now })
     }
   }
 
