@@ -34,6 +34,8 @@ const { t } = useI18n()
 const sidebarOpen = ref(true)
 const detailImageId = ref<number | null>(null)
 const detailOpen = ref(false)
+const isMobile = ref(false)
+const isInitialized = ref(false)
 
 // Computed: always get fresh image data from the store so the detail panel stays reactive
 const detailImage = computed<AIGCImage | null>(() => {
@@ -49,6 +51,20 @@ const selectMode = ref(false)
 
 onMounted(() => {
   store.loadAll()
+  // Check if mobile on mount
+  isMobile.value = window.innerWidth < 768
+  if (isMobile.value) {
+    sidebarOpen.value = false
+  }
+  // Mark as initialized after setting initial state
+  setTimeout(() => {
+    isInitialized.value = true
+  }, 0)
+  // Listen for resize
+  const handleResize = () => {
+    isMobile.value = window.innerWidth < 768
+  }
+  window.addEventListener('resize', handleResize)
 })
 
 // Upload handler
@@ -184,13 +200,22 @@ const currentFolderLabel = computed(() => {
 <template>
   <div class="flex h-[calc(100vh-3.5rem)]">
     <!-- Sidebar -->
-    <Transition name="slide-left">
+    <Transition :name="isInitialized ? 'slide-left' : ''">
       <aside
         v-if="sidebarOpen"
-        class="w-56 shrink-0 border-r border-border/40 bg-sidebar/50 backdrop-blur-lg"
+        class="w-56 shrink-0 border-r border-border/40 bg-sidebar/50 backdrop-blur-lg md:relative fixed top-[3.5rem] md:top-0 bottom-0 left-0 z-[45]"
       >
         <FolderPanel />
       </aside>
+    </Transition>
+
+    <!-- Overlay for mobile -->
+    <Transition name="fade">
+      <div
+        v-if="sidebarOpen && isMobile"
+        class="fixed inset-0 bg-black/50 z-[44] md:hidden"
+        @click="sidebarOpen = false"
+      />
     </Transition>
 
     <!-- Main Content -->

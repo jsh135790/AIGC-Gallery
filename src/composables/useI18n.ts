@@ -34,6 +34,7 @@ const messages: Record<Locale, Record<string, string>> = {
     // Navigation
     'nav.artistGallery': '画师串画廊',
     'nav.aigcManager': 'AIGC 图库',
+    'nav.toolbox': '工具箱',
     'nav.about': '关于',
 
     // About dialog
@@ -172,11 +173,23 @@ const messages: Record<Locale, Record<string, string>> = {
     'language.zh': '中文',
     'language.en': 'English',
     'language.label': '语言',
+
+    // Toolbox
+    'toolbox.title': '工具箱',
+    'toolbox.metadataEditor': '元数据修改',
+    'toolbox.metadataEditorDesc': '编辑图片的 AIGC 元数据',
+    'toolbox.naiToSd': 'NAI 转 SD 提示词',
+    'toolbox.naiToSdDesc': '将 NovelAI 提示词转换为 Stable Diffusion 格式',
+    'toolbox.sdToNai': 'SD 转 NAI 提示词',
+    'toolbox.sdToNaiDesc': '将 Stable Diffusion 提示词转换为 NovelAI 格式',
+    'toolbox.imgToPrompt': 'IMG to Prompt',
+    'toolbox.imgToPromptDesc': '从图片反推生成提示词',
   },
   'en': {
     // Navigation
     'nav.artistGallery': 'Artist Gallery',
     'nav.aigcManager': 'AIGC Library',
+    'nav.toolbox': 'Toolbox',
     'nav.about': 'About',
 
     // About dialog
@@ -315,6 +328,17 @@ const messages: Record<Locale, Record<string, string>> = {
     'language.zh': '中文',
     'language.en': 'English',
     'language.label': 'Language',
+
+    // Toolbox
+    'toolbox.title': 'Toolbox',
+    'toolbox.metadataEditor': 'Metadata Editor',
+    'toolbox.metadataEditorDesc': 'Edit AIGC image metadata',
+    'toolbox.naiToSd': 'NAI to SD Prompt',
+    'toolbox.naiToSdDesc': 'Convert NovelAI prompts to Stable Diffusion format',
+    'toolbox.sdToNai': 'SD to NAI Prompt',
+    'toolbox.sdToNaiDesc': 'Convert Stable Diffusion prompts to NovelAI format',
+    'toolbox.imgToPrompt': 'IMG to Prompt',
+    'toolbox.imgToPromptDesc': 'Generate prompts from images',
   },
 }
 

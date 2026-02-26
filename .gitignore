@@ -16,6 +16,7 @@ dist-ssr
 .vscode/*
 .cursor/*
 .claude/*
+.VSCodeCounter/*
 !.vscode/extensions.json
 .idea
 *.suo

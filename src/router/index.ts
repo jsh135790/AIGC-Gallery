@@ -19,6 +19,12 @@ const router = createRouter({
       component: () => import('@/pages/AIGCManager.vue'),
       meta: { title: 'AIGC 图库', icon: 'Images' },
     },
+    {
+      path: '/toolbox',
+      name: 'toolbox',
+      component: () => import('@/pages/Toolbox.vue'),
+      meta: { title: '工具箱', icon: 'Wrench' },
+    },
   ],
 })
 

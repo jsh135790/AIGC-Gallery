@@ -189,7 +189,7 @@ function getFolderName(item: FolderNavItem): string {
 
     <!-- New/Edit Folder Dialog -->
     <Dialog :open="newFolderOpen" @update:open="newFolderOpen = $event">
-      <DialogContent class="max-w-sm glass-heavy">
+      <DialogContent class="max-w-sm w-[calc(100vw-2rem)] glass-heavy">
         <DialogHeader>
           <DialogTitle>{{ editingFolderId ? t('folder.editFolder') : t('folder.newFolder') }}</DialogTitle>
           <DialogDescription>{{ t('folder.createDescription') }}</DialogDescription>

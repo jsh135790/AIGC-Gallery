@@ -185,6 +185,16 @@ body {
   transform: translateX(-20px);
 }
 
+/* Mobile-specific slide animation */
+@media (max-width: 767px) {
+  .slide-left-enter-from {
+    transform: translateX(-100%);
+  }
+  .slide-left-leave-to {
+    transform: translateX(-100%);
+  }
+}
+
 .slide-right-enter-active,
 .slide-right-leave-active {
   transition: all 0.3s ease;

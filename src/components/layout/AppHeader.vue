@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Sparkles, Palette, Images, Github, Info, X, MessageCircle } from 'lucide-vue-next'
+import { Sparkles, Palette, Images, Wrench, Github, Info, X, MessageCircle } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -22,6 +22,7 @@ const { t } = useI18n()
 const navItems = computed(() => [
   { path: '/gallery', label: t('nav.artistGallery'), icon: Palette },
   { path: '/aigc', label: t('nav.aigcManager'), icon: Images },
+  { path: '/toolbox', label: t('nav.toolbox'), icon: Wrench },
 ])
 </script>
 
@@ -100,7 +101,7 @@ const navItems = computed(() => [
 
   <!-- About Dialog -->
   <Dialog :open="aboutOpen" @update:open="aboutOpen = $event">
-    <DialogContent class="max-w-sm glass-heavy">
+    <DialogContent class="max-w-sm w-[calc(100vw-2rem)] glass-heavy">
       <DialogHeader>
         <DialogTitle class="text-lg">{{ t('about.title') }}</DialogTitle>
         <DialogDescription>{{ t('about.description') }}</DialogDescription>
@@ -111,26 +112,26 @@ const navItems = computed(() => [
         <img
           src="https://files.catbox.moe/ca2r4f.png"
           alt="Pilot1337"
-          class="h-20 w-20 rounded-full border-2 border-border/60 object-cover shadow-md"
+          class="h-16 w-16 sm:h-20 sm:w-20 rounded-full border-2 border-border/60 object-cover shadow-md"
         />
 
         <!-- Info -->
         <div class="text-center space-y-1">
-          <p class="text-base font-semibold">Pilot1337</p>
+          <p class="text-sm sm:text-base font-semibold">Pilot1337</p>
           <a
             href="https://github.com/jsh135790"
             target="_blank"
             rel="noopener noreferrer"
-            class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            class="inline-flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            <Github class="h-3.5 w-3.5" />
+            <Github class="h-3 w-3 sm:h-3.5 sm:w-3.5" />
             jsh135790
           </a>
         </div>
 
         <!-- QQ Group -->
-        <div class="flex items-center gap-2 rounded-lg bg-muted/50 px-4 py-2.5 text-sm">
-          <MessageCircle class="h-4 w-4 text-muted-foreground shrink-0" />
+        <div class="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm">
+          <MessageCircle class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
           <span class="text-muted-foreground">{{ t('about.feedbackGroup') }}</span>
           <span class="font-mono font-medium">1046260326</span>
         </div>
