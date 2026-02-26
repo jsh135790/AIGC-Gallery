@@ -23,8 +23,8 @@ const toolTitles = {
   'img-to-prompt': 'toolbox.imgToPrompt',
 }
 
-function handleToolChange(tool: typeof activeTool.value) {
-  activeTool.value = tool
+function handleToolChange(tool: string) {
+  activeTool.value = tool as typeof activeTool.value
   // Auto-close sidebar on mobile after selecting a tool
   if (isMobile.value) {
     sidebarOpen.value = false
