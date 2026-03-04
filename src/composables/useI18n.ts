@@ -184,6 +184,18 @@ const messages: Record<Locale, Record<string, string>> = {
     'toolbox.sdToNaiDesc': '将 Stable Diffusion 提示词转换为 NovelAI 格式',
     'toolbox.imgToPrompt': 'IMG to Prompt',
     'toolbox.imgToPromptDesc': '从图片反推生成提示词',
+
+    // Metadata Editor
+    'metadata.editor.title': '元数据编辑器',
+    'metadata.editor.upload': '上传图片',
+    'metadata.editor.export': '导出 PNG',
+    'metadata.editor.reset': '重置',
+    'metadata.editor.unsupported': '不支持 ComfyUI 格式',
+    'metadata.editor.uploadHint': '拖拽或点击上传 PNG 图片',
+    'metadata.editor.onlyPng': '仅支持 PNG 格式',
+    'metadata.editor.editPrompt': '编辑提示词',
+    'metadata.editor.editParams': '编辑参数',
+    'detail.editMetadata': '编辑元数据',
   },
   'en': {
     // Navigation
@@ -339,6 +351,18 @@ const messages: Record<Locale, Record<string, string>> = {
     'toolbox.sdToNaiDesc': 'Convert Stable Diffusion prompts to NovelAI format',
     'toolbox.imgToPrompt': 'IMG to Prompt',
     'toolbox.imgToPromptDesc': 'Generate prompts from images',
+
+    // Metadata Editor
+    'metadata.editor.title': 'Metadata Editor',
+    'metadata.editor.upload': 'Upload Image',
+    'metadata.editor.export': 'Export PNG',
+    'metadata.editor.reset': 'Reset',
+    'metadata.editor.unsupported': 'ComfyUI format not supported',
+    'metadata.editor.uploadHint': 'Drag or click to upload PNG image',
+    'metadata.editor.onlyPng': 'Only PNG format supported',
+    'metadata.editor.editPrompt': 'Edit Prompt',
+    'metadata.editor.editParams': 'Edit Parameters',
+    'detail.editMetadata': 'Edit Metadata',
   },
 }
 

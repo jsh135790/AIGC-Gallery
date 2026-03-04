@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { ref, watch, onUnmounted, computed, toRef } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   X, Heart, Trash2, FolderInput, Tag,
-  ChevronLeft, ChevronRight, Maximize2,
+  ChevronLeft, ChevronRight, Maximize2, Edit,
 } from 'lucide-vue-next'
 import { useAigcStore } from '@/stores/aigcStore'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { useScrollLock } from '@/composables/useScrollLock'
+import { useMetadataEditor } from '@/composables/useMetadataEditor'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -35,8 +37,10 @@ const emit = defineEmits<{
 }>()
 
 const store = useAigcStore()
+const router = useRouter()
 const toast = useToast()
 const { t } = useI18n()
+const { setEditingImage } = useMetadataEditor()
 const imageUrl = ref('')
 const newTag = ref('')
 
@@ -104,6 +108,44 @@ async function handleMoveFolder(folderId: unknown) {
   const numId = id === 'none' ? null : parseInt(id)
   await store.moveImagesToFolder([props.image.id], numId)
   toast.success(t('detail.movedToFolder'))
+}
+
+function handleEditMetadata() {
+  if (!props.image) return
+
+  // Only allow editing for SD and NAI images
+  if (props.image.source !== 'sd' && props.image.source !== 'nai') {
+    toast.error(t('metadata.editor.unsupported'))
+    return
+  }
+
+  // Create a new blob URL that will persist across navigation
+  const newBlobUrl = URL.createObjectURL(props.image.imageData)
+
+  setEditingImage({
+    id: String(props.image.id),
+    blob: props.image.imageData,
+    src: newBlobUrl,
+    metadata: {
+      source: props.image.source,
+      prompt: props.image.prompt,
+      negativePrompt: props.image.negativePrompt,
+      parameters: { ...props.image.parameters },
+      rawText: props.image.rawMetadata,
+      v4Data: props.image.v4Data
+    },
+    source: props.image.source,
+    originalMetadata: {
+      source: props.image.source,
+      prompt: props.image.prompt,
+      negativePrompt: props.image.negativePrompt,
+      parameters: { ...props.image.parameters },
+      rawText: props.image.rawMetadata,
+      v4Data: props.image.v4Data
+    }
+  })
+
+  router.push('/toolbox?tool=metadata-editor')
 }
 </script>
 
@@ -209,8 +251,20 @@ async function handleMoveFolder(folderId: unknown) {
             </Select>
           </div>
 
+          <Separator />
+
           <!-- Actions -->
-          <div class="pt-2">
+          <div class="space-y-2">
+            <Button
+              v-if="image.source === 'sd' || image.source === 'nai'"
+              variant="outline"
+              size="sm"
+              class="w-full gap-2"
+              @click="handleEditMetadata"
+            >
+              <Edit class="h-4 w-4" />
+              {{ t('detail.editMetadata') }}
+            </Button>
             <Button
               variant="destructive"
               size="sm"
