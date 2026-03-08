@@ -80,7 +80,7 @@ async function copyPrompt() {
 
 <template>
   <div
-    class="group relative overflow-hidden rounded-xl border border-border/40 bg-card/60 backdrop-blur-md transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:border-primary/30 hover:-translate-y-0.5"
+    class="group relative overflow-hidden rounded-xl border border-border/40 bg-card/90 transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:border-primary/30 hover:-translate-y-0.5"
     @click="emit('view', artist)"
   >
     <!-- Image -->
@@ -103,7 +103,7 @@ async function copyPrompt() {
       <Button
         variant="ghost"
         size="icon"
-        class="absolute top-2 right-2 h-8 w-8 rounded-full bg-black/20 backdrop-blur-sm text-white hover:bg-black/40 transition-all"
+        class="absolute top-2 right-2 h-8 w-8 rounded-full bg-black/45 text-white hover:bg-black/60 transition-all"
         :class="artist.isFavorite ? 'text-red-400' : 'opacity-0 group-hover:opacity-100'"
         @click.stop="emit('toggleFavorite', artist.id!)"
       >
@@ -114,7 +114,7 @@ async function copyPrompt() {
       <Badge
         v-if="artist.category"
         variant="secondary"
-        class="absolute top-2 left-2 bg-black/30 text-white backdrop-blur-sm border-none text-xs"
+        class="absolute top-2 left-2 bg-black/55 text-white border-none text-xs"
       >
         {{ translatedCategory }}
       </Badge>

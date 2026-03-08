@@ -130,9 +130,7 @@ body {
 }
 
 .glass-heavy {
-  background: hsl(var(--card) / 0.8);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: hsl(var(--card) / 0.96);
   border: 1px solid hsl(var(--border) / 0.4);
 }
 

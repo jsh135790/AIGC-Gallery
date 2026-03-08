@@ -26,7 +26,7 @@ const colorMap = {
         <div
           v-for="toast in toasts"
           :key="toast.id"
-          class="flex items-center gap-3 rounded-lg border px-4 py-3 shadow-lg backdrop-blur-lg"
+          class="flex items-center gap-3 rounded-lg border px-4 py-3 shadow-lg"
           :class="colorMap[toast.type]"
         >
           <component :is="iconMap[toast.type]" class="h-4 w-4 shrink-0" />

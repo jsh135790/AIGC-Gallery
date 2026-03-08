@@ -67,7 +67,7 @@ onUnmounted(() => {
     <Transition name="fade">
       <div
         v-if="open"
-        class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+        class="fixed inset-0 z-[100] flex items-center justify-center bg-black/85"
         @click.self="close"
         @wheel="onWheel"
       >

@@ -203,7 +203,7 @@ const currentFolderLabel = computed(() => {
     <Transition :name="isInitialized ? 'slide-left' : ''">
       <aside
         v-if="sidebarOpen"
-        class="w-56 shrink-0 border-r border-border/40 bg-sidebar/50 backdrop-blur-lg md:relative fixed top-[3.5rem] md:top-0 bottom-0 left-0 z-[45]"
+        class="w-56 shrink-0 border-r border-border/40 bg-sidebar/95 md:relative fixed top-[3.5rem] md:top-0 bottom-0 left-0 z-[45]"
       >
         <FolderPanel />
       </aside>
@@ -221,7 +221,7 @@ const currentFolderLabel = computed(() => {
     <!-- Main Content -->
     <main class="flex-1 flex flex-col overflow-hidden">
       <!-- Toolbar -->
-      <div class="border-b border-border/40 bg-background/60 backdrop-blur-sm px-4 py-3">
+      <div class="border-b border-border/40 bg-background/95 px-4 py-3">
         <div class="flex items-center gap-3">
           <Button
             variant="ghost"

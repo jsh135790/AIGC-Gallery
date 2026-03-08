@@ -282,7 +282,7 @@ const handleClearImage = () => {
                   {{ t('metadata.character', { idx: String(char.idx) }) }}
                 </div>
 
-                <div class="space-y-1">
+                <div v-if="char.prompt" class="space-y-1">
                   <Label class="text-xs">Prompt</Label>
                   <Textarea
                     v-model="char.prompt"
@@ -292,7 +292,7 @@ const handleClearImage = () => {
                   />
                 </div>
 
-                <div class="space-y-1">
+                <div v-if="char.negative" class="space-y-1">
                   <Label class="text-xs">Negative</Label>
                   <Textarea
                     v-model="char.negative"

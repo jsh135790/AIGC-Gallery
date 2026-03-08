@@ -45,7 +45,7 @@ const sourceLabel: Record<string, string> = {
     :class="[
       selected
         ? 'border-primary ring-2 ring-primary/20 shadow-lg'
-        : 'border-border/40 bg-card/60 backdrop-blur-md hover:shadow-xl hover:shadow-primary/5 hover:border-primary/30 hover:-translate-y-0.5',
+        : 'border-border/40 bg-card/90 hover:shadow-xl hover:shadow-primary/5 hover:border-primary/30 hover:-translate-y-0.5',
     ]"
     @click="emit('click', image)"
   >
@@ -68,7 +68,7 @@ const sourceLabel: Record<string, string> = {
       <!-- Source badge — monochrome theme -->
       <Badge
         variant="outline"
-        class="absolute top-2 left-2 text-[10px] px-1.5 py-0 bg-background/60 text-foreground/80 border-border/50 backdrop-blur-sm"
+        class="absolute top-2 left-2 text-[10px] px-1.5 py-0 bg-background/85 text-foreground/80 border-border/50"
       >
         {{ sourceLabel[image.source] || '?' }}
       </Badge>
@@ -77,7 +77,7 @@ const sourceLabel: Record<string, string> = {
       <Button
         variant="ghost"
         size="icon"
-        class="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/20 backdrop-blur-sm text-white hover:bg-black/40"
+        class="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/45 text-white hover:bg-black/60"
         :class="image.isFavorite ? 'text-red-400' : 'opacity-0 group-hover:opacity-100'"
         @click.stop="emit('toggleFavorite', image.id!)"
       >
