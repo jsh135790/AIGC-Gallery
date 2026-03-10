@@ -35,8 +35,8 @@ AIGC Gallery is a feature-rich, privacy-focused desktop application for managing
 
 #### 🛠️ **Powerful Toolbox**
 - **Metadata Editor** - Edit prompts and parameters directly in PNG files
-- **Prompt Converter** - Convert between SD and NAI formats
-- **Batch Processing** - Handle multiple images at once
+- **Prompt Converter(Under development)** - Convert between SD and NAI formats
+- **Batch Processing(Under development)** - Handle multiple images at once
 
 #### 🌐 **Bilingual Interface**
 - Full support for English and Chinese
@@ -151,8 +151,8 @@ AIGC Gallery 是一款功能强大、注重隐私的本地 AI 图片管理工具
 
 #### 🛠️ **强大工具箱**
 - **元数据编辑器** - 直接编辑 PNG 文件中的提示词和参数
-- **提示词转换器** - 在 SD 和 NAI 格式间转换
-- **批量处理** - 同时处理多张图片
+- **提示词转换器(开发中)** - 在 SD 和 NAI 格式间转换
+- **批量处理(开发中)** - 同时处理多张图片
 
 #### 🌐 **双语界面**
 - 完整支持中英文
