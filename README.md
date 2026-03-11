@@ -1,13 +1,18 @@
 # AIGC Gallery
 <div align="center">
-
-**A powerful local AI-generated image management tool**
-![Preview Image](https://files.catbox.moe/osg7r1.png)
-[English](#english) | [中文](#中文)
+  <img src="https://files.catbox.moe/osg7r1.png" alt="screenshot"/>
+  <h6>A powerful local AI-generated image management tool</h6>
+  <p>
+    <img src="https://img.shields.io/badge/Chrome-✓-0078D7?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome">
+    <img src="https://img.shields.io/badge/Edge-✓-0078D7?style=flat-square&logo=microsoftedge&logoColor=white" alt="Edge">
+    <img src="https://img.shields.io/badge/Firefox-✓-0078D7?style=flat-square&logo=firefox&logoColor=white" alt="Firefox">
+    <img src="https://img.shields.io/badge/Group-1046260326-0078D7?style=flat-square&logo=QQ&logoColor=white" alt="QQGroup">
+  </p>
 </div>
 
 ---
 
+[English](#english) | [中文](#中文)
 ## English
 
 ### Overview
