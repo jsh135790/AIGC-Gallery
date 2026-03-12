@@ -71,7 +71,7 @@ AIGC Gallery is a feature-rich, privacy-focused desktop application for managing
 #### Option 2: Build from Source
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/AIGC-Gallery.git
+git clone https://github.com/jsh135790/AIGC-Gallery.git
 cd AIGC-Gallery
 
 # Install dependencies
@@ -187,7 +187,7 @@ AIGC Gallery 是一款功能强大、注重隐私的本地 AI 图片管理工具
 #### 方式二：从源码构建
 ```bash
 # 克隆仓库
-git clone https://github.com/yourusername/AIGC-Gallery.git
+git clone https://github.com/jsh135790/AIGC-Gallery.git
 cd AIGC-Gallery
 
 # 安装依赖
