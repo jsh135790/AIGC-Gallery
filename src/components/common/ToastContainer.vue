@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { useToast } from '@/composables/useToast'
+import { useBlurEffect } from '@/composables/useBlurEffect'
 import { X, CheckCircle, AlertCircle, AlertTriangle, Info } from 'lucide-vue-next'
 
 const { toasts, removeToast } = useToast()
+const { blurEnabled } = useBlurEffect()
 
 const iconMap = {
   success: CheckCircle,
@@ -27,7 +29,7 @@ const colorMap = {
           v-for="toast in toasts"
           :key="toast.id"
           class="flex items-center gap-3 rounded-lg border px-4 py-3 shadow-lg"
-          :class="colorMap[toast.type]"
+          :class="[colorMap[toast.type], blurEnabled ? 'backdrop-blur-lg' : '']"
         >
           <component :is="iconMap[toast.type]" class="h-4 w-4 shrink-0" />
           <span class="text-sm flex-1">{{ toast.message }}</span>

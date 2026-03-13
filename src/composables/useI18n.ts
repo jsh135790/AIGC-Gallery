@@ -41,6 +41,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'about.title': '关于 AIGC Gallery',
     'about.description': '本地 AI 生成图片管理工具',
     'about.feedbackGroup': '反馈/交流群：',
+    'about.blurEffect': '模糊效果',
 
     // Common
     'common.search': '搜索',
@@ -208,6 +209,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'about.title': 'About AIGC Gallery',
     'about.description': 'Local AI-generated image management tool',
     'about.feedbackGroup': 'Feedback/Discussion:',
+    'about.blurEffect': 'Blur Effect',
 
     // Common
     'common.search': 'Search',

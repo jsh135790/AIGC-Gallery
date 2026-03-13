@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, toRef } from 'vue'
 import { X, ZoomIn, ZoomOut, Download } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { useScrollLock } from '@/composables/useScrollLock'
+import { useBlurEffect } from '@/composables/useBlurEffect'
 
 const props = defineProps<{
   src: string
@@ -14,6 +15,7 @@ const emit = defineEmits<{
   'update:open': [value: boolean]
 }>()
 
+const { blurEnabled } = useBlurEffect()
 const scale = ref(1)
 const imgLoaded = ref(false)
 
@@ -67,7 +69,8 @@ onUnmounted(() => {
     <Transition name="fade">
       <div
         v-if="open"
-        class="fixed inset-0 z-[100] flex items-center justify-center bg-black/85"
+        class="fixed inset-0 z-[100] flex items-center justify-center"
+        :class="blurEnabled ? 'bg-black/70 backdrop-blur-sm' : 'bg-black/85'"
         @click.self="close"
         @wheel="onWheel"
       >

@@ -8,6 +8,7 @@ import {
 import { useAigcStore } from '@/stores/aigcStore'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
+import { useBlurEffect } from '@/composables/useBlurEffect'
 import { parseImageMetadata, generateThumbnail, getTagsFromPrompt } from '@/lib/parser'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -30,6 +31,7 @@ import type { AIGCImage } from '@/types'
 const store = useAigcStore()
 const toast = useToast()
 const { t } = useI18n()
+const { blurEnabled } = useBlurEffect()
 
 const sidebarOpen = ref(true)
 const detailImageId = ref<number | null>(null)
@@ -203,7 +205,8 @@ const currentFolderLabel = computed(() => {
     <Transition :name="isInitialized ? 'slide-left' : ''">
       <aside
         v-if="sidebarOpen"
-        class="w-56 shrink-0 border-r border-border/40 bg-sidebar/95 md:relative fixed top-[3.5rem] md:top-0 bottom-0 left-0 z-[45]"
+        class="w-56 shrink-0 border-r border-border/40 md:relative fixed top-[3.5rem] md:top-0 bottom-0 left-0 z-[45]"
+        :class="blurEnabled ? 'bg-sidebar/50 backdrop-blur-lg' : 'bg-sidebar/95'"
       >
         <FolderPanel />
       </aside>

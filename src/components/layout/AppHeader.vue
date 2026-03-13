@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Sparkles, Palette, Images, Wrench, Github, Info, X, MessageCircle } from 'lucide-vue-next'
+import { Sparkles, Palette, Images, Wrench, Github, Info, X, MessageCircle, Sparkle } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -13,11 +13,13 @@ import {
 import ThemeToggle from './ThemeToggle.vue'
 import LanguageToggle from './LanguageToggle.vue'
 import { useI18n } from '@/composables/useI18n'
+import { useBlurEffect } from '@/composables/useBlurEffect'
 
 const route = useRoute()
 const router = useRouter()
 const aboutOpen = ref(false)
 const { t } = useI18n()
+const { blurEnabled, toggleBlur } = useBlurEffect()
 
 const navItems = computed(() => [
   { path: '/gallery', label: t('nav.artistGallery'), icon: Palette },
@@ -135,6 +137,26 @@ const navItems = computed(() => [
           <span class="text-muted-foreground">{{ t('about.feedbackGroup') }}</span>
           <span class="font-mono font-medium">1046260326</span>
         </div>
+
+        <!-- Blur Effect Toggle -->
+        <button
+          class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 sm:px-4 text-xs sm:text-sm transition-colors hover:bg-muted/50"
+          @click="toggleBlur"
+        >
+          <div class="flex items-center gap-2">
+            <Sparkle class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
+            <span class="text-muted-foreground">{{ t('about.blurEffect') }}</span>
+          </div>
+          <div
+            class="relative h-5 w-9 rounded-full transition-colors duration-200"
+            :class="blurEnabled ? 'bg-primary' : 'bg-muted-foreground/30'"
+          >
+            <div
+              class="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200"
+              :class="blurEnabled ? 'translate-x-4' : 'translate-x-0.5'"
+            />
+          </div>
+        </button>
       </div>
     </DialogContent>
   </Dialog>

@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { PanelLeftClose, PanelLeft } from 'lucide-vue-next'
 import { useI18n } from '@/composables/useI18n'
+import { useBlurEffect } from '@/composables/useBlurEffect'
 import { Button } from '@/components/ui/button'
 import ToolboxSidebar from '@/components/toolbox/ToolboxSidebar.vue'
 import MetadataEditor from '@/components/toolbox/MetadataEditor.vue'
@@ -10,6 +11,7 @@ import SdToNai from '@/components/toolbox/SdToNai.vue'
 import ImgToPrompt from '@/components/toolbox/ImgToPrompt.vue'
 
 const { t } = useI18n()
+const { blurEnabled } = useBlurEffect()
 
 const sidebarOpen = ref(true)
 const isMobile = ref(false)
@@ -55,7 +57,8 @@ onMounted(() => {
     <Transition :name="isInitialized ? 'slide-left' : ''">
       <aside
         v-if="sidebarOpen"
-        class="w-56 shrink-0 border-r border-border/40 bg-sidebar/95 md:relative fixed top-[3.5rem] md:top-0 bottom-0 left-0 z-[45]"
+        class="w-56 shrink-0 border-r border-border/40 md:relative fixed top-[3.5rem] md:top-0 bottom-0 left-0 z-[45]"
+        :class="blurEnabled ? 'bg-sidebar/50 backdrop-blur-lg' : 'bg-sidebar/95'"
       >
         <ToolboxSidebar v-model="activeTool" @update:model-value="handleToolChange" />
       </aside>

@@ -15,6 +15,7 @@ import {
 import DropZone from '@/components/common/DropZone.vue'
 import { useI18n } from '@/composables/useI18n'
 import { useScrollLock } from '@/composables/useScrollLock'
+import { useBlurEffect } from '@/composables/useBlurEffect'
 import type { Artist } from '@/types'
 import { ARTIST_CATEGORIES } from '@/types'
 
@@ -30,6 +31,7 @@ const emit = defineEmits<{
 }>()
 
 const { t, translateCategory } = useI18n()
+const { blurEnabled } = useBlurEffect()
 
 // Lock body scroll when panel is open
 useScrollLock(toRef(props, 'open'))
@@ -155,7 +157,8 @@ function cancel() {
   <Transition name="fade">
     <div
       v-if="open"
-      class="fixed inset-0 z-40 bg-black/45"
+      class="fixed inset-0 z-40"
+      :class="blurEnabled ? 'bg-black/30 backdrop-blur-sm' : 'bg-black/45'"
       @click="cancel"
     />
   </Transition>
@@ -164,7 +167,8 @@ function cancel() {
   <Transition name="slide-right">
     <div
       v-if="open"
-      class="fixed right-0 top-0 bottom-0 z-50 w-full max-w-lg border-l border-border/40 bg-background shadow-2xl overflow-hidden flex flex-col"
+      class="fixed right-0 top-0 bottom-0 z-50 w-full max-w-lg border-l border-border/40 shadow-2xl overflow-hidden flex flex-col"
+      :class="blurEnabled ? 'bg-background/95 backdrop-blur-xl' : 'bg-background'"
     >
       <!-- Header -->
       <div class="flex items-center justify-between border-b border-border/40 px-6 py-4">

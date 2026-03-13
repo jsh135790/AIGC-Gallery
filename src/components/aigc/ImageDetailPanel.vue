@@ -10,6 +10,7 @@ import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { useScrollLock } from '@/composables/useScrollLock'
 import { useMetadataEditor } from '@/composables/useMetadataEditor'
+import { useBlurEffect } from '@/composables/useBlurEffect'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -41,6 +42,7 @@ const router = useRouter()
 const toast = useToast()
 const { t } = useI18n()
 const { setEditingImage } = useMetadataEditor()
+const { blurEnabled } = useBlurEffect()
 const imageUrl = ref('')
 const newTag = ref('')
 
@@ -154,7 +156,8 @@ function handleEditMetadata() {
   <Transition name="fade">
     <div
       v-if="open && image"
-      class="fixed inset-0 z-40 bg-black/45"
+      class="fixed inset-0 z-40"
+      :class="blurEnabled ? 'bg-black/30 backdrop-blur-sm' : 'bg-black/45'"
       @click="close"
     />
   </Transition>
@@ -163,7 +166,8 @@ function handleEditMetadata() {
   <Transition name="slide-right">
     <div
       v-if="open && image"
-      class="fixed right-0 top-14 bottom-0 z-50 w-full max-w-md border-l border-border/40 bg-background shadow-2xl overflow-hidden flex flex-col"
+      class="fixed right-0 top-14 bottom-0 z-50 w-full max-w-md border-l border-border/40 shadow-2xl overflow-hidden flex flex-col"
+      :class="blurEnabled ? 'bg-background/95 backdrop-blur-xl' : 'bg-background'"
     >
       <!-- Header -->
       <div class="flex items-center justify-between border-b border-border/40 px-4 py-3">
