@@ -16,6 +16,7 @@ import DropZone from '@/components/common/DropZone.vue'
 import { useI18n } from '@/composables/useI18n'
 import { useScrollLock } from '@/composables/useScrollLock'
 import { useBlurEffect } from '@/composables/useBlurEffect'
+import { useArtistSettings } from '@/composables/useArtistSettings'
 import type { Artist } from '@/types'
 import { ARTIST_CATEGORIES } from '@/types'
 
@@ -32,6 +33,7 @@ const emit = defineEmits<{
 
 const { t, translateCategory } = useI18n()
 const { blurEnabled } = useBlurEffect()
+const { autoFillName, autoFillPrefix } = useArtistSettings()
 
 // Lock body scroll when panel is open
 useScrollLock(toRef(props, 'open'))
@@ -91,12 +93,19 @@ function resetForm() {
 }
 
 function handleFiles(files: File[]) {
-  // Only allow 1 image — replace existing
   const file = files[0]
   if (!file) return
   imagePreviews.value.forEach(url => URL.revokeObjectURL(url))
   form.images = [file]
   imagePreviews.value = [URL.createObjectURL(file)]
+
+  if (!props.editArtist && autoFillName.value && !form.name.trim()) {
+    const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '')
+    form.name = nameWithoutExt
+    if (autoFillPrefix.value && !form.prompt.trim()) {
+      form.prompt = `artist:${nameWithoutExt}`
+    }
+  }
 }
 
 function removeImage(index: number) {

@@ -41,7 +41,16 @@ const messages: Record<Locale, Record<string, string>> = {
     'about.title': '关于 AIGC Gallery',
     'about.description': '本地 AI 生成图片管理工具',
     'about.feedbackGroup': '反馈/交流群：',
-    'about.blurEffect': '模糊效果',
+    'about.tabSettings': '功能设置',
+    'about.tabAuthor': '关于作者',
+
+    // Settings
+    'settings.global': '全局',
+    'settings.artistGallery': '画师串画廊',
+    'settings.blurEffect': '模糊效果',
+    'settings.autoFillName': '上传图片自动填入文件名',
+    'settings.autoFillPrefix': '自动补充画师串前缀',
+    'settings.autoFillPrefixHint': '需先启用「上传图片自动填入文件名」',
 
     // Common
     'common.search': '搜索',
@@ -209,7 +218,16 @@ const messages: Record<Locale, Record<string, string>> = {
     'about.title': 'About AIGC Gallery',
     'about.description': 'Local AI-generated image management tool',
     'about.feedbackGroup': 'Feedback/Discussion:',
-    'about.blurEffect': 'Blur Effect',
+    'about.tabSettings': 'Settings',
+    'about.tabAuthor': 'About Author',
+
+    // Settings
+    'settings.global': 'Global',
+    'settings.artistGallery': 'Artist Gallery',
+    'settings.blurEffect': 'Blur Effect',
+    'settings.autoFillName': 'Auto-fill filename on upload',
+    'settings.autoFillPrefix': 'Auto-fill artist prompt prefix',
+    'settings.autoFillPrefixHint': 'Requires "Auto-fill filename" to be enabled',
 
     // Common
     'common.search': 'Search',

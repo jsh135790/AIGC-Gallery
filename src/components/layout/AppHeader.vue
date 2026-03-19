@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Sparkles, Palette, Images, Wrench, Github, Info, X, MessageCircle, Sparkle } from 'lucide-vue-next'
+import { Sparkles, Palette, Images, Wrench, Github, Info, MessageCircle, Sparkle, Settings, User, FileText, PenTool } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -14,12 +14,15 @@ import ThemeToggle from './ThemeToggle.vue'
 import LanguageToggle from './LanguageToggle.vue'
 import { useI18n } from '@/composables/useI18n'
 import { useBlurEffect } from '@/composables/useBlurEffect'
+import { useArtistSettings } from '@/composables/useArtistSettings'
 
 const route = useRoute()
 const router = useRouter()
 const aboutOpen = ref(false)
+const aboutTab = ref<'settings' | 'author'>('settings')
 const { t } = useI18n()
 const { blurEnabled, toggleBlur } = useBlurEffect()
+const { autoFillName, autoFillPrefix, canTogglePrefix, toggleAutoFillName, toggleAutoFillPrefix } = useArtistSettings()
 
 const navItems = computed(() => [
   { path: '/gallery', label: t('nav.artistGallery'), icon: Palette },
@@ -102,14 +105,108 @@ const navItems = computed(() => [
   </header>
 
   <!-- About Dialog -->
-  <Dialog :open="aboutOpen" @update:open="aboutOpen = $event">
-    <DialogContent class="max-w-sm w-[calc(100vw-2rem)] glass-heavy">
+  <Dialog :open="aboutOpen" @update:open="v => { aboutOpen = v; if (!v) aboutTab = 'settings' }">
+    <DialogContent class="max-w-md w-[calc(100vw-2rem)] glass-heavy">
       <DialogHeader>
         <DialogTitle class="text-lg">{{ t('about.title') }}</DialogTitle>
         <DialogDescription>{{ t('about.description') }}</DialogDescription>
       </DialogHeader>
 
-      <div class="mt-4 flex flex-col items-center gap-4">
+      <!-- Tab Switcher -->
+      <div class="flex rounded-lg bg-muted/60 p-1 mt-2">
+        <button
+          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs sm:text-sm font-medium transition-all"
+          :class="aboutTab === 'settings' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'"
+          @click="aboutTab = 'settings'"
+        >
+          <Settings class="h-3.5 w-3.5" />
+          {{ t('about.tabSettings') }}
+        </button>
+        <button
+          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs sm:text-sm font-medium transition-all"
+          :class="aboutTab === 'author' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'"
+          @click="aboutTab = 'author'"
+        >
+          <User class="h-3.5 w-3.5" />
+          {{ t('about.tabAuthor') }}
+        </button>
+      </div>
+
+      <!-- Settings Tab -->
+      <div v-if="aboutTab === 'settings'" class="mt-3 space-y-4">
+        <!-- Global Settings -->
+        <div class="space-y-1.5">
+          <p class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-1">{{ t('settings.global') }}</p>
+          <button
+            class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-xs sm:text-sm transition-colors hover:bg-muted/50"
+            @click="toggleBlur"
+          >
+            <div class="flex items-center gap-2">
+              <Sparkle class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
+              <span>{{ t('settings.blurEffect') }}</span>
+            </div>
+            <div
+              class="relative h-5 w-9 shrink-0 rounded-full transition-colors duration-200"
+              :class="blurEnabled ? 'bg-emerald-500' : 'bg-muted-foreground/25'"
+            >
+              <div
+                class="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200"
+                :class="blurEnabled ? 'translate-x-4' : 'translate-x-0.5'"
+              />
+            </div>
+          </button>
+        </div>
+
+        <!-- Artist Gallery Settings -->
+        <div class="space-y-1.5">
+          <p class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-1">{{ t('settings.artistGallery') }}</p>
+
+          <!-- Auto-fill filename -->
+          <button
+            class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-xs sm:text-sm transition-colors hover:bg-muted/50"
+            @click="toggleAutoFillName"
+          >
+            <div class="flex items-center gap-2">
+              <FileText class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
+              <span>{{ t('settings.autoFillName') }}</span>
+            </div>
+            <div
+              class="relative h-5 w-9 shrink-0 rounded-full transition-colors duration-200"
+              :class="autoFillName ? 'bg-emerald-500' : 'bg-muted-foreground/25'"
+            >
+              <div
+                class="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200"
+                :class="autoFillName ? 'translate-x-4' : 'translate-x-0.5'"
+              />
+            </div>
+          </button>
+
+          <!-- Auto-fill artist prefix -->
+          <button
+            class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-xs sm:text-sm transition-colors"
+            :class="canTogglePrefix ? 'hover:bg-muted/50' : 'opacity-40 cursor-not-allowed'"
+            @click="toggleAutoFillPrefix"
+          >
+            <div class="flex items-center gap-2">
+              <PenTool class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
+              <span>{{ t('settings.autoFillPrefix') }}</span>
+            </div>
+            <div
+              class="relative h-5 w-9 shrink-0 rounded-full transition-colors duration-200"
+              :class="autoFillPrefix ? 'bg-emerald-500' : 'bg-muted-foreground/25'"
+            >
+              <div
+                class="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200"
+                :class="autoFillPrefix ? 'translate-x-4' : 'translate-x-0.5'"
+              />
+            </div>
+          </button>
+          <p v-if="!canTogglePrefix" class="text-[11px] text-muted-foreground/60 px-3">{{ t('settings.autoFillPrefixHint') }}</p>
+        </div>
+      </div>
+
+      <!-- Author Tab -->
+      <div v-else class="mt-3 flex flex-col items-center gap-4">
         <!-- Avatar -->
         <img
           src="https://files.catbox.moe/ca2r4f.png"
@@ -137,26 +234,6 @@ const navItems = computed(() => [
           <span class="text-muted-foreground">{{ t('about.feedbackGroup') }}</span>
           <span class="font-mono font-medium">1046260326</span>
         </div>
-
-        <!-- Blur Effect Toggle -->
-        <button
-          class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 sm:px-4 text-xs sm:text-sm transition-colors hover:bg-muted/50"
-          @click="toggleBlur"
-        >
-          <div class="flex items-center gap-2">
-            <Sparkle class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
-            <span class="text-muted-foreground">{{ t('about.blurEffect') }}</span>
-          </div>
-          <div
-            class="relative h-5 w-9 rounded-full transition-colors duration-200"
-            :class="blurEnabled ? 'bg-primary' : 'bg-muted-foreground/30'"
-          >
-            <div
-              class="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200"
-              :class="blurEnabled ? 'translate-x-4' : 'translate-x-0.5'"
-            />
-          </div>
-        </button>
       </div>
     </DialogContent>
   </Dialog>
