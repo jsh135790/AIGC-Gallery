@@ -51,6 +51,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'settings.autoFillName': '上传图片自动填入文件名',
     'settings.autoFillPrefix': '自动补充画师串前缀',
     'settings.autoFillPrefixHint': '需先启用「上传图片自动填入文件名」',
+    'settings.customPrefix': '自定义画师串前缀',
 
     // Common
     'common.search': '搜索',
@@ -228,6 +229,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'settings.autoFillName': 'Auto-fill filename on upload',
     'settings.autoFillPrefix': 'Auto-fill artist prompt prefix',
     'settings.autoFillPrefixHint': 'Requires "Auto-fill filename" to be enabled',
+    'settings.customPrefix': 'Custom prompt prefix',
 
     // Common
     'common.search': 'Search',

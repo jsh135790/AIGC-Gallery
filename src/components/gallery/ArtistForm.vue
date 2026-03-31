@@ -33,7 +33,7 @@ const emit = defineEmits<{
 
 const { t, translateCategory } = useI18n()
 const { blurEnabled } = useBlurEffect()
-const { autoFillName, autoFillPrefix } = useArtistSettings()
+const { autoFillName, autoFillPrefix, customPrefix } = useArtistSettings()
 
 // Lock body scroll when panel is open
 useScrollLock(toRef(props, 'open'))
@@ -103,7 +103,7 @@ function handleFiles(files: File[]) {
     const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '')
     form.name = nameWithoutExt
     if (autoFillPrefix.value && !form.prompt.trim()) {
-      form.prompt = `artist:${nameWithoutExt}`
+      form.prompt = `${customPrefix.value}${nameWithoutExt}`
     }
   }
 }

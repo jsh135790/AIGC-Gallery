@@ -22,7 +22,7 @@ const aboutOpen = ref(false)
 const aboutTab = ref<'settings' | 'author'>('settings')
 const { t } = useI18n()
 const { blurEnabled, toggleBlur } = useBlurEffect()
-const { autoFillName, autoFillPrefix, canTogglePrefix, toggleAutoFillName, toggleAutoFillPrefix } = useArtistSettings()
+const { autoFillName, autoFillPrefix, customPrefix, canTogglePrefix, canEditPrefix, toggleAutoFillName, toggleAutoFillPrefix } = useArtistSettings()
 
 const navItems = computed(() => [
   { path: '/gallery', label: t('nav.artistGallery'), icon: Palette },
@@ -202,6 +202,18 @@ const navItems = computed(() => [
             </div>
           </button>
           <p v-if="!canTogglePrefix" class="text-[11px] text-muted-foreground/60 px-3">{{ t('settings.autoFillPrefixHint') }}</p>
+
+          <!-- Custom prefix input -->
+          <div class="px-3 pt-1">
+            <label class="text-[11px] text-muted-foreground mb-1 block">{{ t('settings.customPrefix') }}</label>
+            <input
+              v-model="customPrefix"
+              :disabled="!canEditPrefix"
+              type="text"
+              class="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-mono transition-colors focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-40 disabled:cursor-not-allowed"
+              placeholder="artist:"
+            />
+          </div>
         </div>
       </div>
 
