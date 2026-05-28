@@ -10,6 +10,18 @@ export interface Artist {
   images: Blob[]
   thumbnails: string[]
   isFavorite: boolean
+  /** Owning page id. Nullable only during migration window; new artists always have a page. */
+  pageId: number | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface ArtistPage {
+  id?: number
+  name: string
+  color?: string
+  icon?: string
+  sortOrder: number
   createdAt: Date
   updatedAt: Date
 }

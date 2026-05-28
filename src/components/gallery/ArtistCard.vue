@@ -80,7 +80,7 @@ async function copyPrompt() {
 
 <template>
   <div
-    class="group relative overflow-hidden rounded-xl border border-border/40 bg-card/90 transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:border-primary/30 hover:-translate-y-0.5"
+    class="group relative cursor-pointer overflow-hidden rounded-xl border border-border/40 bg-card/90 transition-all duration-300 hover:shadow-xl hover:shadow-black/10 hover:border-primary/30 dark:hover:shadow-black/40"
     @click="emit('view', artist)"
   >
     <!-- Image -->
@@ -103,8 +103,9 @@ async function copyPrompt() {
       <Button
         variant="ghost"
         size="icon"
-        class="absolute top-2 right-2 h-8 w-8 rounded-full bg-black/45 text-white hover:bg-black/60 transition-all"
-        :class="artist.isFavorite ? 'text-red-400' : 'opacity-0 group-hover:opacity-100'"
+        class="absolute top-2 right-2 h-8 w-8 cursor-pointer rounded-full bg-black/45 text-white hover:bg-black/60 transition-all"
+        :class="artist.isFavorite ? 'text-rose-500' : 'opacity-0 group-hover:opacity-100'"
+        :aria-label="t('common.favorites')"
         @click.stop="emit('toggleFavorite', artist.id!)"
       >
         <Heart class="h-4 w-4" :class="artist.isFavorite && 'fill-current'" />

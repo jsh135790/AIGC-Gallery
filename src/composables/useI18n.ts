@@ -55,6 +55,7 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Common
     'common.search': '搜索',
+    'common.searchPlaceholder': '搜索...',
     'common.cancel': '取消',
     'common.save': '保存',
     'common.delete': '删除',
@@ -71,6 +72,10 @@ const messages: Record<Locale, Record<string, string>> = {
     'common.selectAll': '全选',
     'common.deselectAll': '取消全选',
     'common.rename': '重命名',
+    'common.copied': '已复制',
+    'common.scrollLeft': '向左滚动',
+    'common.scrollRight': '向右滚动',
+    'common.empty': '空空如也',
 
     // Artist Gallery
     'artist.searchPlaceholder': '搜索画师名称、画师串或标签...',
@@ -104,6 +109,28 @@ const messages: Record<Locale, Record<string, string>> = {
     'artist.exportSuccess': '收藏已导出',
     'artist.importSuccess': '数据导入成功',
     'artist.importFailed': '导入失败，请检查文件格式',
+    'artist.copyPrompt': '复制画师串',
+    'artist.belongTo': '所属分组',
+    'artist.empty': '当前分组还没有画师',
+    'artist.emptyHint': '点击下方按钮添加你的第一个画师吧',
+    'artist.createFirst': '添加第一个画师',
+
+    // Artist Pages
+    'artistPage.title': '分组',
+    'artistPage.default': '默认分组',
+    'artistPage.newPage': '新建分组',
+    'artistPage.editPage': '编辑分组',
+    'artistPage.deletePage': '删除分组',
+    'artistPage.dialogDescription': '为画师创建一个独立分组（例如 NAI / ComfyUI / SD）',
+    'artistPage.nameLabel': '分组名称',
+    'artistPage.colorLabel': '标识色',
+    'artistPage.moveUp': '上移',
+    'artistPage.moveDown': '下移',
+    'artistPage.deleteConfirm': '删除分组「{name}」？其中的画师将合并到「{target}」。',
+    'artistPage.cannotDeleteLast': '至少需要保留一个分组',
+    'artistPage.created': '分组已创建',
+    'artistPage.renamed': '分组已更新',
+    'artistPage.deleted': '分组已删除',
 
     // Artist categories
     'category.realistic': '写实',
@@ -233,6 +260,7 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Common
     'common.search': 'Search',
+    'common.searchPlaceholder': 'Search...',
     'common.cancel': 'Cancel',
     'common.save': 'Save',
     'common.delete': 'Delete',
@@ -249,6 +277,10 @@ const messages: Record<Locale, Record<string, string>> = {
     'common.selectAll': 'Select All',
     'common.deselectAll': 'Deselect All',
     'common.rename': 'Rename',
+    'common.copied': 'Copied',
+    'common.scrollLeft': 'Scroll left',
+    'common.scrollRight': 'Scroll right',
+    'common.empty': 'Nothing here',
 
     // Artist Gallery
     'artist.searchPlaceholder': 'Search artist name, prompt or tags...',
@@ -282,6 +314,28 @@ const messages: Record<Locale, Record<string, string>> = {
     'artist.exportSuccess': 'Favorites exported',
     'artist.importSuccess': 'Data imported successfully',
     'artist.importFailed': 'Import failed, please check file format',
+    'artist.copyPrompt': 'Copy prompt',
+    'artist.belongTo': 'Group',
+    'artist.empty': 'No artists in this group yet',
+    'artist.emptyHint': 'Click the button below to add your first artist',
+    'artist.createFirst': 'Add your first artist',
+
+    // Artist Pages
+    'artistPage.title': 'Group',
+    'artistPage.default': 'Default',
+    'artistPage.newPage': 'New Group',
+    'artistPage.editPage': 'Edit Group',
+    'artistPage.deletePage': 'Delete Group',
+    'artistPage.dialogDescription': 'Create a separate group for artists (e.g. NAI / ComfyUI / SD)',
+    'artistPage.nameLabel': 'Group name',
+    'artistPage.colorLabel': 'Color',
+    'artistPage.moveUp': 'Move left',
+    'artistPage.moveDown': 'Move right',
+    'artistPage.deleteConfirm': 'Delete group "{name}"? Its artists will be merged into "{target}".',
+    'artistPage.cannotDeleteLast': 'At least one group must remain',
+    'artistPage.created': 'Group created',
+    'artistPage.renamed': 'Group updated',
+    'artistPage.deleted': 'Group deleted',
 
     // Artist categories
     'category.realistic': 'Realistic',

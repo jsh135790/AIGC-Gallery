@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, watch, toRaw, toRef } from 'vue'
+import { ref, reactive, watch, toRaw, toRef, onMounted, onBeforeUnmount } from 'vue'
 import { Plus, X, Star, Upload, Trash2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,6 +17,7 @@ import { useI18n } from '@/composables/useI18n'
 import { useScrollLock } from '@/composables/useScrollLock'
 import { useBlurEffect } from '@/composables/useBlurEffect'
 import { useArtistSettings } from '@/composables/useArtistSettings'
+import { useArtistStore } from '@/stores/artistStore'
 import type { Artist } from '@/types'
 import { ARTIST_CATEGORIES } from '@/types'
 
@@ -27,13 +28,14 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  save: [data: Omit<Artist, 'id' | 'createdAt' | 'updatedAt'>]
+  save: [data: Omit<Artist, 'id' | 'createdAt' | 'updatedAt' | 'pageId'> & { pageId?: number | null }]
   delete: [id: number]
 }>()
 
 const { t, translateCategory } = useI18n()
 const { blurEnabled } = useBlurEffect()
 const { autoFillName, autoFillPrefix, customPrefix } = useArtistSettings()
+const store = useArtistStore()
 
 // Lock body scroll when panel is open
 useScrollLock(toRef(props, 'open'))
@@ -47,6 +49,7 @@ const form = reactive({
   images: [] as Blob[],
   thumbnails: [] as string[],
   isFavorite: false,
+  pageId: null as number | null,
 })
 
 const newTag = ref('')
@@ -67,6 +70,7 @@ watch([() => props.editArtist, () => props.open], ([artist, isOpen]) => {
     form.tags = [...artist.tags]
     form.images = [...artist.images]
     form.isFavorite = artist.isFavorite
+    form.pageId = artist.pageId ?? store.selectedPageId
 
     // Generate preview URLs for existing images
     if (artist.images && artist.images.length > 0) {
@@ -88,6 +92,7 @@ function resetForm() {
   form.images = []
   form.thumbnails = []
   form.isFavorite = false
+  form.pageId = store.selectedPageId
   imagePreviews.value.forEach(url => URL.revokeObjectURL(url))
   imagePreviews.value = []
 }
@@ -142,6 +147,7 @@ function save() {
     images: Array.from(raw.images),
     thumbnails: [...raw.thumbnails],
     isFavorite: raw.isFavorite,
+    pageId: raw.pageId,
   })
   emit('update:open', false)
   resetForm()
@@ -159,6 +165,16 @@ function cancel() {
   emit('update:open', false)
   resetForm()
 }
+
+// Close on Escape (matches backdrop click behavior)
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && props.open) {
+    e.stopPropagation()
+    cancel()
+  }
+}
+onMounted(() => window.addEventListener('keydown', onKeydown))
+onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 </script>
 
 <template>
@@ -167,7 +183,9 @@ function cancel() {
     <div
       v-if="open"
       class="fixed inset-0 z-40"
-      :class="blurEnabled ? 'bg-black/30 backdrop-blur-sm' : 'bg-black/45'"
+      :class="blurEnabled
+        ? 'bg-black/45 backdrop-blur-sm backdrop-saturate-150'
+        : 'bg-black/60'"
       @click="cancel"
     />
   </Transition>
@@ -206,11 +224,39 @@ function cancel() {
             <Input v-model="form.prompt" placeholder="artist:wlop" class="font-mono text-sm" />
           </div>
 
+          <!-- Page (group) -->
+          <div class="space-y-2" v-if="store.sortedPages.length > 0">
+            <label class="text-sm font-medium">{{ t('artist.belongTo') }}</label>
+            <Select
+              :model-value="form.pageId != null ? String(form.pageId) : ''"
+              @update:model-value="v => form.pageId = v ? Number(v) : null"
+            >
+              <SelectTrigger class="cursor-pointer">
+                <SelectValue :placeholder="t('artistPage.title')" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem
+                  v-for="page in store.sortedPages"
+                  :key="page.id"
+                  :value="String(page.id)"
+                >
+                  <span class="inline-flex items-center gap-2">
+                    <span
+                      class="h-2 w-2 rounded-full"
+                      :style="{ backgroundColor: page.color || '#6366f1' }"
+                    />
+                    {{ page.name }}
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <!-- Category -->
           <div class="space-y-2">
             <label class="text-sm font-medium">{{ t('artist.category') }}</label>
             <Select v-model="form.category">
-              <SelectTrigger>
+              <SelectTrigger class="cursor-pointer">
                 <SelectValue :placeholder="translateCategory(form.category)" />
               </SelectTrigger>
               <SelectContent>

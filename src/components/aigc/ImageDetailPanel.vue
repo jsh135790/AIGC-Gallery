@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onUnmounted, computed, toRef } from 'vue'
+import { ref, watch, onUnmounted, onMounted, onBeforeUnmount, computed, toRef } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   X, Heart, Trash2, FolderInput, Tag,
@@ -71,6 +71,16 @@ onUnmounted(() => {
 function close() {
   emit('update:open', false)
 }
+
+// Close on Escape (matches backdrop click behavior)
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && props.open) {
+    e.stopPropagation()
+    close()
+  }
+}
+onMounted(() => window.addEventListener('keydown', onKeydown))
+onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
 async function toggleFav() {
   if (props.image?.id) {
@@ -157,7 +167,9 @@ function handleEditMetadata() {
     <div
       v-if="open && image"
       class="fixed inset-0 z-40"
-      :class="blurEnabled ? 'bg-black/30 backdrop-blur-sm' : 'bg-black/45'"
+      :class="blurEnabled
+        ? 'bg-black/45 backdrop-blur-sm backdrop-saturate-150'
+        : 'bg-black/60'"
       @click="close"
     />
   </Transition>
@@ -174,10 +186,11 @@ function handleEditMetadata() {
         <h3 class="text-sm font-semibold truncate flex-1">{{ image.filename }}</h3>
         <div class="flex items-center gap-1">
           <Button
-            variant="ghost" size="icon" class="h-8 w-8"
+            variant="ghost" size="icon" class="h-8 w-8 cursor-pointer"
+            :aria-label="t('common.favorites')"
             @click="toggleFav"
           >
-            <Heart class="h-4 w-4" :class="image.isFavorite ? 'text-red-400 fill-red-400' : ''" />
+            <Heart class="h-4 w-4" :class="image.isFavorite ? 'text-rose-500 fill-rose-500' : ''" />
           </Button>
           <Button variant="ghost" size="icon" class="h-8 w-8" @click="close">
             <X class="h-4 w-4" />

@@ -77,8 +77,8 @@ const sourceLabel: Record<string, string> = {
       <Button
         variant="ghost"
         size="icon"
-        class="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/45 text-white hover:bg-black/60"
-        :class="image.isFavorite ? 'text-red-400' : 'opacity-0 group-hover:opacity-100'"
+        class="absolute top-2 right-2 h-7 w-7 cursor-pointer rounded-full bg-black/45 text-white hover:bg-black/60"
+        :class="image.isFavorite ? 'text-rose-500' : 'opacity-0 group-hover:opacity-100'"
         @click.stop="emit('toggleFavorite', image.id!)"
       >
         <Heart class="h-3.5 w-3.5" :class="image.isFavorite && 'fill-current'" />
