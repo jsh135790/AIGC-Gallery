@@ -316,70 +316,42 @@ export const useArtistStore = defineStore('artist', () => {
   // ===== Import / Export =====
 
   /**
-   * v3 export shape (back-compat readable by v2 since `data` is still the artist list):
-   * { version, type, pages: [...], data: [{...artist, pageName}] }
+   * Export shape (back-compat readable by older importers since `data` is still the artist list):
+   * { version, type, pageName, data: [{...artist}] }
+   * Exports every artist in the currently selected page (regardless of favorite state).
+   * When no page is selected, exports all artists.
    */
-  async function exportFavorites(): Promise<string> {
-    const favorites = artists.value.filter(a => a.isFavorite)
+  async function exportCurrentPage(): Promise<string> {
     const pageById = new Map(pages.value.map(p => [p.id, p]))
-    const exportData = favorites.map(({ id, images, thumbnails, pageId, ...rest }) => ({
-      ...rest,
-      pageName: pageId != null ? pageById.get(pageId)?.name ?? null : null,
-    }))
-    const exportedPages = sortedPages.value.map(p => ({
-      name: p.name,
-      color: p.color,
-      icon: p.icon,
-      sortOrder: p.sortOrder,
-    }))
+    const items = selectedPageId.value == null
+      ? artists.value
+      : artists.value.filter(a => a.pageId === selectedPageId.value)
+    const exportData = items.map(({ id, images, thumbnails, pageId, ...rest }) => ({ ...rest }))
+    const currentPageName = selectedPageId.value != null
+      ? pageById.get(selectedPageId.value)?.name ?? null
+      : null
     return JSON.stringify({
       exportDate: new Date().toISOString(),
       version: '3.0',
-      type: 'artist-favorites',
-      pages: exportedPages,
+      type: 'artist-page',
+      pageName: currentPageName,
       data: exportData,
     }, null, 2)
   }
 
   /**
-   * Import handling:
-   * - v3 (has `pages` and/or `pageName` on items): merge pages by name, route artists there
-   * - v2 (no page metadata): route every imported artist to the currently selected page
+   * Import handling: parse the artist list and add every item to the currently
+   * selected page (falling back to the first page when none is selected).
+   * Any page metadata in the file is ignored on purpose.
    */
   async function importArtists(json: string) {
     const parsed = JSON.parse(json)
     const items = parsed.data || parsed.favorites || []
-    const importedPages: Array<{ name: string; color?: string; icon?: string; sortOrder?: number }> =
-      Array.isArray(parsed.pages) ? parsed.pages : []
     const now = new Date()
 
-    // 1) Ensure all referenced pages exist; map name -> id
-    const nameToPageId = new Map<string, number>()
-    for (const p of pages.value) {
-      if (p.id != null) nameToPageId.set(p.name, p.id)
-    }
-    for (const p of importedPages) {
-      if (!p?.name) continue
-      if (!nameToPageId.has(p.name)) {
-        const id = await addPage({ name: p.name, color: p.color, icon: p.icon })
-        nameToPageId.set(p.name, id)
-      }
-    }
-
-    // 2) Pick fallback page id for items lacking pageName
-    const fallbackPageId = selectedPageId.value ?? sortedPages.value[0]?.id ?? null
+    const targetPageId = selectedPageId.value ?? sortedPages.value[0]?.id ?? null
 
     for (const item of items) {
-      const targetName: string | null = item.pageName ?? null
-      let targetPageId: number | null = fallbackPageId
-      if (targetName) {
-        if (!nameToPageId.has(targetName)) {
-          const id = await addPage({ name: targetName })
-          nameToPageId.set(targetName, id)
-        }
-        targetPageId = nameToPageId.get(targetName) ?? fallbackPageId
-      }
-
       await db.artists.add({
         name: item.name || '',
         prompt: item.prompt || '',
@@ -388,7 +360,7 @@ export const useArtistStore = defineStore('artist', () => {
         tags: item.tags || [],
         images: [],
         thumbnails: [],
-        isFavorite: item.isFavorite ?? true,
+        isFavorite: item.isFavorite ?? false,
         pageId: targetPageId,
         createdAt: now,
         updatedAt: now,
@@ -430,7 +402,7 @@ export const useArtistStore = defineStore('artist', () => {
     toggleFavorite,
     moveArtistToPage,
     // import/export
-    exportFavorites,
+    exportCurrentPage,
     importArtists,
   }
 })

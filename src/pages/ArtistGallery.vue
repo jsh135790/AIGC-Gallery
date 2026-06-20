@@ -4,6 +4,7 @@ import { Plus, Heart, ArrowUpDown, Download, Upload, SlidersHorizontal } from 'l
 import { useArtistStore } from '@/stores/artistStore'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
+import { useBlurEffect } from '@/composables/useBlurEffect'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -28,6 +29,7 @@ import type { Artist } from '@/types'
 const store = useArtistStore()
 const toast = useToast()
 const { t, translateCategory } = useI18n()
+const { blurEnabled } = useBlurEffect()
 
 const formOpen = ref(false)
 const editingArtist = ref<Artist | null>(null)
@@ -70,12 +72,12 @@ async function handleDelete(id: number) {
 }
 
 async function handleExport() {
-  const json = await store.exportFavorites()
+  const json = await store.exportCurrentPage()
   const blob = new Blob([json], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `artist-favorites-${new Date().toISOString().slice(0, 10)}.json`
+  a.download = `artist-${new Date().toISOString().slice(0, 10)}.json`
   a.click()
   URL.revokeObjectURL(url)
   toast.success(t('artist.exportSuccess'))
@@ -105,7 +107,7 @@ function copyPrompt(_prompt: string) {
 <template>
   <div class="container mx-auto px-4 max-w-7xl">
     <!-- Sticky header: tabs + toolbar -->
-    <div class="sticky top-14 z-30 -mx-4 px-4 bg-background/85 backdrop-blur-md">
+    <div class="sticky top-14 z-30 -mx-4 px-4" :class="blurEnabled ? 'bg-background/85 backdrop-blur-md' : 'bg-background/95'">
       <!-- Page Tabs -->
       <ArtistPageTabs />
 
