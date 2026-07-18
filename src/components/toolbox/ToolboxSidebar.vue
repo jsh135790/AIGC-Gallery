@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { FileEdit, ArrowRightLeft, ArrowLeftRight, ImagePlus } from 'lucide-vue-next'
 import { useI18n } from '@/composables/useI18n'
-import { cn } from '@/lib/utils'
+import SectionLabel from '@/components/common/SectionLabel.vue'
+import SidebarItem from '@/components/layout/SidebarItem.vue'
 
 const { t } = useI18n()
 
@@ -36,30 +37,24 @@ const tools = [
 </script>
 
 <template>
-  <div class="flex flex-col h-full py-4">
-    <div class="px-4 mb-3">
-      <h3 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-        {{ t('toolbox.title') }}
-      </h3>
+  <div class="flex h-full flex-col">
+    <div class="p-4 pb-2">
+      <SectionLabel>{{ t('toolbox.title') }}</SectionLabel>
     </div>
 
-    <nav class="flex-1 px-2 space-y-1">
-      <button
+    <nav class="flex-1 space-y-0.5 px-2 pb-4">
+      <SidebarItem
         v-for="tool in tools"
         :key="tool.id"
-        :class="cn(
-          'w-full flex items-start gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
-          'hover:bg-accent/50',
-          model === tool.id && 'bg-accent text-accent-foreground'
-        )"
+        :active="model === tool.id"
+        :label="t(tool.label)"
+        :description="t(tool.desc)"
         @click="model = tool.id"
       >
-        <component :is="tool.icon" class="h-4 w-4 mt-0.5 shrink-0" />
-        <div class="flex-1 text-left">
-          <div class="font-medium">{{ t(tool.label) }}</div>
-          <div class="text-xs text-muted-foreground mt-0.5">{{ t(tool.desc) }}</div>
-        </div>
-      </button>
+        <template #icon>
+          <component :is="tool.icon" />
+        </template>
+      </SidebarItem>
     </nav>
   </div>
 </template>

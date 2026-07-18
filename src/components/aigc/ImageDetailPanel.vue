@@ -1,20 +1,15 @@
 <script setup lang="ts">
-import { ref, watch, onUnmounted, onMounted, onBeforeUnmount, computed, toRef } from 'vue'
+import { ref, watch, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  X, Heart, Trash2, FolderInput, Tag,
-  ChevronLeft, ChevronRight, Maximize2, Edit,
+  Heart, Trash2, Tag, Maximize2, Edit,
 } from 'lucide-vue-next'
 import { useAigcStore } from '@/stores/aigcStore'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
-import { useScrollLock } from '@/composables/useScrollLock'
-import { useMetadataEditor } from '@/composables/useMetadataEditor'
-import { useBlurEffect } from '@/composables/useBlurEffect'
+import { cloneParsedMetadata, useMetadataEditor } from '@/composables/useMetadataEditor'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import {
   Select,
@@ -23,6 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import SidePanel from '@/components/common/SidePanel.vue'
+import ImageLightbox from '@/components/common/ImageLightbox.vue'
+import SectionLabel from '@/components/common/SectionLabel.vue'
 import MetadataViewer from './MetadataViewer.vue'
 import TagBadge from '@/components/common/TagBadge.vue'
 import type { AIGCImage } from '@/types'
@@ -34,7 +32,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  openLightbox: [src: string]
 }>()
 
 const store = useAigcStore()
@@ -42,12 +39,10 @@ const router = useRouter()
 const toast = useToast()
 const { t } = useI18n()
 const { setEditingImage } = useMetadataEditor()
-const { blurEnabled } = useBlurEffect()
 const imageUrl = ref('')
 const newTag = ref('')
-
-// Lock body scroll when panel is open
-useScrollLock(toRef(props, 'open'))
+const lightboxOpen = ref(false)
+const previewTrigger = ref<HTMLButtonElement | null>(null)
 
 // Compute current folder value for the select
 const currentFolderValue = computed(() => {
@@ -64,23 +59,27 @@ watch(() => props.image, (img) => {
   }
 }, { immediate: true })
 
+watch([() => props.open, () => props.image?.id], ([open], previous) => {
+  const previousImageId = previous?.[1]
+  if (!open || props.image?.id !== previousImageId) {
+    lightboxOpen.value = false
+  }
+})
+
+watch(lightboxOpen, (open, wasOpen) => {
+  if (wasOpen && !open && props.open && props.image) {
+    previewTrigger.value?.focus()
+  }
+}, { flush: 'post' })
+
 onUnmounted(() => {
   if (imageUrl.value) URL.revokeObjectURL(imageUrl.value)
 })
 
-function close() {
-  emit('update:open', false)
+function handlePanelOpenChange(value: boolean) {
+  if (!value) lightboxOpen.value = false
+  emit('update:open', value)
 }
-
-// Close on Escape (matches backdrop click behavior)
-function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape' && props.open) {
-    e.stopPropagation()
-    close()
-  }
-}
-onMounted(() => window.addEventListener('keydown', onKeydown))
-onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
 async function toggleFav() {
   if (props.image?.id) {
@@ -94,7 +93,7 @@ async function deleteImage() {
   if (props.image?.id) {
     await store.deleteImage(props.image.id)
     toast.success(t('detail.imageDeleted'))
-    close()
+    emit('update:open', false)
   }
 }
 
@@ -131,30 +130,21 @@ function handleEditMetadata() {
     return
   }
 
-  // Create a new blob URL that will persist across navigation
-  const newBlobUrl = URL.createObjectURL(props.image.imageData)
+  const imageMetadata = cloneParsedMetadata({
+    source: props.image.source,
+    prompt: props.image.prompt,
+    negativePrompt: props.image.negativePrompt,
+    parameters: props.image.parameters,
+    rawText: props.image.rawMetadata,
+    v4Data: props.image.v4Data,
+  })
 
   setEditingImage({
     id: String(props.image.id),
     blob: props.image.imageData,
-    src: newBlobUrl,
-    metadata: {
-      source: props.image.source,
-      prompt: props.image.prompt,
-      negativePrompt: props.image.negativePrompt,
-      parameters: { ...props.image.parameters },
-      rawText: props.image.rawMetadata,
-      v4Data: props.image.v4Data
-    },
+    metadata: imageMetadata,
     source: props.image.source,
-    originalMetadata: {
-      source: props.image.source,
-      prompt: props.image.prompt,
-      negativePrompt: props.image.negativePrompt,
-      parameters: { ...props.image.parameters },
-      rawText: props.image.rawMetadata,
-      v4Data: props.image.v4Data
-    }
+    originalMetadata: imageMetadata,
   })
 
   router.push('/toolbox?tool=metadata-editor')
@@ -162,138 +152,130 @@ function handleEditMetadata() {
 </script>
 
 <template>
-  <!-- Backdrop -->
-  <Transition name="fade">
-    <div
-      v-if="open && image"
-      class="fixed inset-0 z-40"
-      :class="blurEnabled
-        ? 'bg-black/45 backdrop-blur-sm backdrop-saturate-150'
-        : 'bg-black/60'"
-      @click="close"
-    />
-  </Transition>
+  <SidePanel
+    :open="open && !!image"
+    :title="image?.filename ?? ''"
+    @update:open="handlePanelOpenChange"
+  >
+    <template #header-actions>
+      <Button
+        variant="ghost" size="icon" class="h-8 w-8 cursor-pointer"
+        :aria-label="t('common.favorites')"
+        @click="toggleFav"
+      >
+        <Heart class="h-4 w-4" :class="image?.isFavorite ? 'text-primary fill-primary' : ''" />
+      </Button>
+    </template>
 
-  <!-- Panel (overlay, not pushing content) -->
-  <Transition name="slide-right">
-    <div
-      v-if="open && image"
-      class="fixed right-0 top-14 bottom-0 z-50 w-full max-w-md border-l border-border/40 shadow-2xl overflow-hidden flex flex-col"
-      :class="blurEnabled ? 'bg-background/95 backdrop-blur-xl' : 'bg-background'"
-    >
-      <!-- Header -->
-      <div class="flex items-center justify-between border-b border-border/40 px-4 py-3">
-        <h3 class="text-sm font-semibold truncate flex-1">{{ image.filename }}</h3>
-        <div class="flex items-center gap-1">
+    <div v-if="image" class="p-4 space-y-4">
+      <!-- Preview Image -->
+      <button
+        ref="previewTrigger"
+        type="button"
+        class="group relative block w-full cursor-pointer overflow-hidden rounded-lg border border-border/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        :aria-label="t('lightbox.open')"
+        @click="lightboxOpen = true"
+      >
+        <img
+          :src="imageUrl"
+          :alt="image.filename"
+          class="w-full object-contain max-h-64 transition-transform duration-300 group-hover:scale-[1.02]"
+        />
+        <div class="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
+          <Maximize2 class="h-6 w-6 text-white opacity-0 group-hover:opacity-70 transition-opacity" />
+        </div>
+      </button>
+
+      <!-- Metadata -->
+      <MetadataViewer :image="image" />
+
+      <Separator />
+
+      <!-- Tags -->
+      <div class="space-y-2">
+        <SectionLabel>{{ t('detail.tags') }}</SectionLabel>
+        <div class="flex flex-wrap gap-1.5">
+          <TagBadge
+            v-for="tag in image.tags"
+            :key="tag"
+            :tag="tag"
+            removable
+            @remove="removeTag"
+          />
+          <span v-if="!image.tags.length" class="text-xs text-muted-foreground">{{ t('detail.noTags') }}</span>
+        </div>
+        <div class="flex gap-2">
+          <Input
+            v-model="newTag"
+            :placeholder="t('detail.addTag')"
+            class="h-8 text-xs"
+            @keydown.enter.prevent="addTag"
+          />
           <Button
-            variant="ghost" size="icon" class="h-8 w-8 cursor-pointer"
-            :aria-label="t('common.favorites')"
-            @click="toggleFav"
+            variant="outline"
+            size="sm"
+            class="h-8 shrink-0"
+            :aria-label="t('detail.addTag')"
+            @click="addTag"
           >
-            <Heart class="h-4 w-4" :class="image.isFavorite ? 'text-rose-500 fill-rose-500' : ''" />
-          </Button>
-          <Button variant="ghost" size="icon" class="h-8 w-8" @click="close">
-            <X class="h-4 w-4" />
+            <Tag class="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
 
-      <ScrollArea class="flex-1">
-        <div class="p-4 space-y-4">
-          <!-- Preview Image -->
-          <div
-            class="relative overflow-hidden rounded-lg border border-border/40 cursor-pointer group"
-            @click="emit('openLightbox', imageUrl)"
-          >
-            <img
-              :src="imageUrl"
-              :alt="image.filename"
-              class="w-full object-contain max-h-64 transition-transform duration-300 group-hover:scale-[1.02]"
-            />
-            <div class="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
-              <Maximize2 class="h-6 w-6 text-white opacity-0 group-hover:opacity-70 transition-opacity" />
-            </div>
-          </div>
+      <Separator />
 
-          <!-- Metadata -->
-          <MetadataViewer :image="image" />
-
-          <Separator />
-
-          <!-- Tags -->
-          <div class="space-y-2">
-            <span class="font-medium text-xs uppercase tracking-wider text-muted-foreground">{{ t('detail.tags') }}</span>
-            <div class="flex flex-wrap gap-1.5">
-              <TagBadge
-                v-for="tag in image.tags"
-                :key="tag"
-                :tag="tag"
-                removable
-                @remove="removeTag"
-              />
-              <span v-if="!image.tags.length" class="text-xs text-muted-foreground">{{ t('detail.noTags') }}</span>
-            </div>
-            <div class="flex gap-2">
-              <Input
-                v-model="newTag"
-                :placeholder="t('detail.addTag')"
-                class="h-8 text-xs"
-                @keydown.enter.prevent="addTag"
-              />
-              <Button variant="outline" size="sm" class="h-8 shrink-0" @click="addTag">
-                <Tag class="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          </div>
-
-          <Separator />
-
-          <!-- Move to folder -->
-          <div class="space-y-2">
-            <span class="font-medium text-xs uppercase tracking-wider text-muted-foreground">{{ t('detail.moveToFolder') }}</span>
-            <Select :model-value="currentFolderValue" @update:model-value="handleMoveFolder">
-              <SelectTrigger class="h-8 text-xs">
-                <SelectValue :placeholder="t('detail.selectFolder')" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">{{ t('aigc.uncategorized') }}</SelectItem>
-                <SelectItem
-                  v-for="folder in store.folders"
-                  :key="folder.id"
-                  :value="String(folder.id)"
-                >
-                  {{ folder.name }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Separator />
-
-          <!-- Actions -->
-          <div class="space-y-2">
-            <Button
-              v-if="image.source === 'sd' || image.source === 'nai'"
-              variant="outline"
-              size="sm"
-              class="w-full gap-2"
-              @click="handleEditMetadata"
+      <!-- Move to folder -->
+      <div class="space-y-2">
+        <SectionLabel>{{ t('detail.moveToFolder') }}</SectionLabel>
+        <Select :model-value="currentFolderValue" @update:model-value="handleMoveFolder">
+          <SelectTrigger class="h-8 text-xs">
+            <SelectValue :placeholder="t('detail.selectFolder')" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">{{ t('aigc.uncategorized') }}</SelectItem>
+            <SelectItem
+              v-for="folder in store.folders"
+              :key="folder.id"
+              :value="String(folder.id)"
             >
-              <Edit class="h-4 w-4" />
-              {{ t('detail.editMetadata') }}
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              class="w-full gap-2"
-              @click="deleteImage"
-            >
-              <Trash2 class="h-4 w-4" />
-              {{ t('detail.deleteImage') }}
-            </Button>
-          </div>
-        </div>
-      </ScrollArea>
+              {{ folder.name }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Separator />
+
+      <!-- Actions -->
+      <div class="space-y-2">
+        <Button
+          v-if="image.source === 'sd' || image.source === 'nai'"
+          variant="outline"
+          size="sm"
+          class="w-full gap-2"
+          @click="handleEditMetadata"
+        >
+          <Edit class="h-4 w-4" />
+          {{ t('detail.editMetadata') }}
+        </Button>
+        <Button
+          variant="destructive"
+          size="sm"
+          class="w-full gap-2"
+          @click="deleteImage"
+        >
+          <Trash2 class="h-4 w-4" />
+          {{ t('detail.deleteImage') }}
+        </Button>
+      </div>
     </div>
-  </Transition>
+    <ImageLightbox
+      v-if="image"
+      v-model:open="lightboxOpen"
+      :src="imageUrl"
+      :filename="image.filename"
+      :alt="image.filename"
+    />
+  </SidePanel>
 </template>

@@ -25,6 +25,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { FolderNavItem } from '@/types'
+import { DEFAULT_SWATCH } from '@/lib/colors'
+import SectionLabel from '@/components/common/SectionLabel.vue'
+import ColorSwatchPicker from '@/components/common/ColorSwatchPicker.vue'
+import SidebarItem from '@/components/layout/SidebarItem.vue'
 
 const store = useAigcStore()
 const { t } = useI18n()
@@ -36,14 +40,8 @@ const ICON_MAP: Record<string, any> = {
 // New folder dialog
 const newFolderOpen = ref(false)
 const newFolderName = ref('')
-const newFolderColor = ref('#6366f1')
+const newFolderColor = ref<string>(DEFAULT_SWATCH)
 const editingFolderId = ref<number | null>(null)
-
-const COLORS = [
-  '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e',
-  '#f97316', '#eab308', '#22c55e', '#06b6d4',
-  '#3b82f6', '#64748b',
-]
 
 function getIcon(name: string) {
   return ICON_MAP[name] || Folder
@@ -56,7 +54,7 @@ function selectFolder(item: FolderNavItem) {
 function openNewFolder() {
   editingFolderId.value = null
   newFolderName.value = ''
-  newFolderColor.value = '#6366f1'
+  newFolderColor.value = DEFAULT_SWATCH
   newFolderOpen.value = true
 }
 
@@ -64,7 +62,7 @@ function openEditFolder(item: FolderNavItem) {
   if (item.isSystem) return
   editingFolderId.value = item.id as number
   newFolderName.value = item.name
-  newFolderColor.value = item.color || '#6366f1'
+  newFolderColor.value = item.color || DEFAULT_SWATCH
   newFolderOpen.value = true
 }
 
@@ -106,7 +104,7 @@ function getFolderName(item: FolderNavItem): string {
 <template>
   <div class="flex h-full flex-col">
     <div class="p-4 pb-2">
-      <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{{ t('folder.categories') }}</h2>
+      <SectionLabel>{{ t('folder.categories') }}</SectionLabel>
     </div>
 
     <ScrollArea class="flex-1 px-2">
@@ -118,64 +116,46 @@ function getFolderName(item: FolderNavItem): string {
             class="my-2"
           />
 
-          <div
-            class="group flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all cursor-pointer"
-            :class="[
-              store.selectedFolderId === item.id
-                ? 'bg-primary/10 text-primary font-medium'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
-            ]"
+          <SidebarItem
+            :active="store.selectedFolderId === item.id"
+            :label="getFolderName(item)"
+            :count="item.count"
+            :color="!item.isSystem ? item.color : undefined"
             @click="selectFolder(item)"
           >
-            <!-- Color dot for user folders -->
-            <div
-              v-if="!item.isSystem && item.color"
-              class="h-2.5 w-2.5 rounded-full shrink-0"
-              :style="{ backgroundColor: item.color }"
-            />
-            <component
-              v-else
-              :is="getIcon(item.icon)"
-              class="h-4 w-4 shrink-0"
-            />
-
-            <span class="flex-1 truncate">{{ getFolderName(item) }}</span>
-
-            <span
-              class="text-xs tabular-nums"
-              :class="store.selectedFolderId === item.id ? 'text-primary/70' : 'text-muted-foreground/50'"
-            >
-              {{ item.count }}
-            </span>
-
-            <!-- Context menu for user folders -->
-            <DropdownMenu v-if="!item.isSystem">
-              <DropdownMenuTrigger as-child>
-                <button
-                  class="flex h-5 w-5 items-center justify-center rounded opacity-30 group-hover:opacity-100 hover:bg-muted transition-all"
-                  @click.stop
-                >
-                  <MoreHorizontal class="h-3.5 w-3.5" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" class="w-36">
-                <DropdownMenuItem class="gap-2" @click="openEditFolder(item)">
-                  <Pencil class="h-3.5 w-3.5" />
-                  {{ t('common.rename') }}
-                </DropdownMenuItem>
-                <DropdownMenuItem class="gap-2 text-destructive" @click="handleDeleteFolder(item.id as number)">
-                  <Trash2 class="h-3.5 w-3.5" />
-                  {{ t('common.delete') }}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+            <template v-if="item.isSystem || !item.color" #icon>
+              <component :is="getIcon(item.icon)" />
+            </template>
+            <template v-if="!item.isSystem" #trailing>
+              <DropdownMenu>
+                <DropdownMenuTrigger as-child>
+                  <button
+                    type="button"
+                    class="flex h-5 w-5 cursor-pointer items-center justify-center rounded hover:bg-foreground/10 transition-colors"
+                    :aria-label="t('common.more')"
+                  >
+                    <MoreHorizontal class="h-3.5 w-3.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" class="w-36">
+                  <DropdownMenuItem class="gap-2" @click="openEditFolder(item)">
+                    <Pencil class="h-3.5 w-3.5" />
+                    {{ t('common.rename') }}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem class="gap-2 text-destructive" @click="handleDeleteFolder(item.id as number)">
+                    <Trash2 class="h-3.5 w-3.5" />
+                    {{ t('common.delete') }}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </template>
+          </SidebarItem>
         </template>
       </nav>
     </ScrollArea>
 
     <!-- Add folder button -->
-    <div class="border-t border-border/40 p-3">
+    <div class="border-t border-sidebar-border p-3">
       <Button
         variant="ghost"
         size="sm"
@@ -202,16 +182,7 @@ function getFolderName(item: FolderNavItem): string {
           />
           <div class="space-y-2">
             <label class="text-sm text-muted-foreground">{{ t('folder.folderColor') }}</label>
-            <div class="flex flex-wrap gap-2">
-              <button
-                v-for="color in COLORS"
-                :key="color"
-                class="h-6 w-6 rounded-full transition-transform hover:scale-110 ring-offset-2 ring-offset-background"
-                :class="newFolderColor === color && 'ring-2 ring-primary scale-110'"
-                :style="{ backgroundColor: color }"
-                @click="newFolderColor = color"
-              />
-            </div>
+            <ColorSwatchPicker v-model="newFolderColor" />
           </div>
         </div>
         <DialogFooter>

@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { ref, reactive, watch, toRaw, toRef, onMounted, onBeforeUnmount } from 'vue'
-import { Plus, X, Star, Upload, Trash2 } from 'lucide-vue-next'
+import { ref, reactive, watch, toRaw } from 'vue'
+import { Plus, X, Trash2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Select,
   SelectContent,
@@ -13,13 +12,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import DropZone from '@/components/common/DropZone.vue'
+import SidePanel from '@/components/common/SidePanel.vue'
+import StarRating from '@/components/common/StarRating.vue'
 import { useI18n } from '@/composables/useI18n'
-import { useScrollLock } from '@/composables/useScrollLock'
-import { useBlurEffect } from '@/composables/useBlurEffect'
 import { useArtistSettings } from '@/composables/useArtistSettings'
 import { useArtistStore } from '@/stores/artistStore'
 import type { Artist } from '@/types'
 import { ARTIST_CATEGORIES } from '@/types'
+import { DEFAULT_SWATCH } from '@/lib/colors'
 
 const props = defineProps<{
   open: boolean
@@ -33,12 +33,8 @@ const emit = defineEmits<{
 }>()
 
 const { t, translateCategory } = useI18n()
-const { blurEnabled } = useBlurEffect()
 const { autoFillName, autoFillPrefix, customPrefix } = useArtistSettings()
 const store = useArtistStore()
-
-// Lock body scroll when panel is open
-useScrollLock(toRef(props, 'open'))
 
 const form = reactive({
   name: '',
@@ -131,10 +127,6 @@ function removeTag(tag: string) {
   form.tags = form.tags.filter(t => t !== tag)
 }
 
-function setRating(n: number) {
-  form.rating = form.rating === n ? 0 : n
-}
-
 function save() {
   if (!form.name.trim() || !form.prompt.trim()) return
   const raw = toRaw(form)
@@ -161,185 +153,139 @@ function handleDelete() {
   }
 }
 
-function cancel() {
-  emit('update:open', false)
-  resetForm()
+function onOpenChange(v: boolean) {
+  emit('update:open', v)
+  if (!v) resetForm()
 }
-
-// Close on Escape (matches backdrop click behavior)
-function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape' && props.open) {
-    e.stopPropagation()
-    cancel()
-  }
-}
-onMounted(() => window.addEventListener('keydown', onKeydown))
-onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 </script>
 
 <template>
-  <!-- Backdrop -->
-  <Transition name="fade">
-    <div
-      v-if="open"
-      class="fixed inset-0 z-40"
-      :class="blurEnabled
-        ? 'bg-black/45 backdrop-blur-sm backdrop-saturate-150'
-        : 'bg-black/60'"
-      @click="cancel"
-    />
-  </Transition>
+  <SidePanel
+    :open="open"
+    :title="editArtist ? t('artist.editArtist') : t('artist.addArtist')"
+    width-class="sm:max-w-lg"
+    @update:open="onOpenChange"
+  >
+    <div class="p-6 space-y-5">
+      <p class="text-sm text-muted-foreground -mt-1">
+        {{ editArtist ? t('artist.editDescription') : t('artist.formDescription') }}
+      </p>
 
-  <!-- Panel -->
-  <Transition name="slide-right">
-    <div
-      v-if="open"
-      class="fixed right-0 top-0 bottom-0 z-50 w-full max-w-lg border-l border-border/40 shadow-2xl overflow-hidden flex flex-col"
-      :class="blurEnabled ? 'bg-background/95 backdrop-blur-xl' : 'bg-background'"
-    >
-      <!-- Header -->
-      <div class="flex items-center justify-between border-b border-border/40 px-6 py-4">
-        <div>
-          <h3 class="text-lg font-semibold">{{ editArtist ? t('artist.editArtist') : t('artist.addArtist') }}</h3>
-          <p class="text-sm text-muted-foreground mt-0.5">
-            {{ editArtist ? t('artist.editDescription') : t('artist.formDescription') }}
-          </p>
-        </div>
-        <Button variant="ghost" size="icon" class="h-8 w-8" @click="cancel">
-          <X class="h-4 w-4" />
-        </Button>
+      <!-- Name -->
+      <div class="space-y-2">
+        <label class="text-sm font-medium">{{ t('artist.name') }} <span class="text-destructive">*</span></label>
+        <Input v-model="form.name" placeholder="wlop" />
       </div>
 
-      <ScrollArea class="flex-1">
-        <div class="p-6 space-y-5">
-          <!-- Name -->
-          <div class="space-y-2">
-            <label class="text-sm font-medium">{{ t('artist.name') }} <span class="text-destructive">*</span></label>
-            <Input v-model="form.name" placeholder="wlop" />
-          </div>
+      <!-- Prompt -->
+      <div class="space-y-2">
+        <label class="text-sm font-medium">{{ t('artist.prompt') }} <span class="text-destructive">*</span></label>
+        <Input v-model="form.prompt" placeholder="artist:wlop" class="font-mono text-sm" />
+      </div>
 
-          <!-- Prompt -->
-          <div class="space-y-2">
-            <label class="text-sm font-medium">{{ t('artist.prompt') }} <span class="text-destructive">*</span></label>
-            <Input v-model="form.prompt" placeholder="artist:wlop" class="font-mono text-sm" />
-          </div>
-
-          <!-- Page (group) -->
-          <div class="space-y-2" v-if="store.sortedPages.length > 0">
-            <label class="text-sm font-medium">{{ t('artist.belongTo') }}</label>
-            <Select
-              :model-value="form.pageId != null ? String(form.pageId) : ''"
-              @update:model-value="v => form.pageId = v ? Number(v) : null"
+      <!-- Page (group) -->
+      <div class="space-y-2" v-if="store.sortedPages.length > 0">
+        <label class="text-sm font-medium">{{ t('artist.belongTo') }}</label>
+        <Select
+          :model-value="form.pageId != null ? String(form.pageId) : ''"
+          @update:model-value="v => form.pageId = v ? Number(v) : null"
+        >
+          <SelectTrigger class="cursor-pointer">
+            <SelectValue :placeholder="t('artistPage.title')" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem
+              v-for="page in store.sortedPages"
+              :key="page.id"
+              :value="String(page.id)"
             >
-              <SelectTrigger class="cursor-pointer">
-                <SelectValue :placeholder="t('artistPage.title')" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem
-                  v-for="page in store.sortedPages"
-                  :key="page.id"
-                  :value="String(page.id)"
-                >
-                  <span class="inline-flex items-center gap-2">
-                    <span
-                      class="h-2 w-2 rounded-full"
-                      :style="{ backgroundColor: page.color || '#6366f1' }"
-                    />
-                    {{ page.name }}
-                  </span>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <!-- Category -->
-          <div class="space-y-2">
-            <label class="text-sm font-medium">{{ t('artist.category') }}</label>
-            <Select v-model="form.category">
-              <SelectTrigger class="cursor-pointer">
-                <SelectValue :placeholder="translateCategory(form.category)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem v-for="cat in ARTIST_CATEGORIES" :key="cat" :value="cat">
-                  {{ translateCategory(cat) }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <!-- Rating -->
-          <div class="space-y-2">
-            <label class="text-sm font-medium">{{ t('artist.rating') }}</label>
-            <div class="flex gap-1">
-              <button
-                v-for="n in 5"
-                :key="n"
-                class="p-0.5 transition-transform hover:scale-110"
-                @click="setRating(n)"
-              >
-                <Star
-                  class="h-5 w-5"
-                  :class="n <= form.rating ? 'text-amber-400 fill-amber-400' : 'text-muted-foreground/30'"
+              <span class="inline-flex items-center gap-2">
+                <span
+                  class="h-2 w-2 rounded-full"
+                  :style="{ backgroundColor: page.color || DEFAULT_SWATCH }"
                 />
-              </button>
-            </div>
-          </div>
+                {{ page.name }}
+              </span>
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-          <!-- Tags -->
-          <div class="space-y-2">
-            <label class="text-sm font-medium">{{ t('artist.tags') }}</label>
-            <div class="flex gap-2">
-              <Input
-                v-model="newTag"
-                :placeholder="t('artist.tagInputPlaceholder')"
-                class="flex-1"
-                @keydown.enter.prevent="addTag"
-              />
-              <Button variant="outline" size="icon" @click="addTag">
-                <Plus class="h-4 w-4" />
-              </Button>
-            </div>
-            <div v-if="form.tags.length" class="flex flex-wrap gap-1.5 pt-1">
-              <Badge
-                v-for="tag in form.tags"
-                :key="tag"
-                variant="secondary"
-                class="gap-1 cursor-pointer"
-                @click="removeTag(tag)"
-              >
-                {{ tag }}
-                <X class="h-3 w-3" />
-              </Badge>
-            </div>
-          </div>
+      <!-- Category -->
+      <div class="space-y-2">
+        <label class="text-sm font-medium">{{ t('artist.category') }}</label>
+        <Select v-model="form.category">
+          <SelectTrigger class="cursor-pointer">
+            <SelectValue :placeholder="translateCategory(form.category)" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem v-for="cat in ARTIST_CATEGORIES" :key="cat" :value="cat">
+              {{ translateCategory(cat) }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-          <!-- Image (single) -->
-          <div class="space-y-2">
-            <label class="text-sm font-medium">{{ t('artist.sampleImage') }}</label>
-            <DropZone
-              v-if="imagePreviews.length === 0"
-              @files="handleFiles"
-              :multiple="false"
-              :label="t('artist.addSampleImage')"
-              :sublabel="t('artist.sampleImageHint')"
-            />
-            <div v-if="imagePreviews.length" class="pt-2">
-              <div class="group relative aspect-3/4 max-w-[200px] overflow-hidden rounded-lg border border-border/50">
-                <img :src="imagePreviews[0]" class="h-full w-full object-cover" />
-                <button
-                  class="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                  @click="removeImage(0)"
-                >
-                  <X class="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
+      <!-- Rating -->
+      <div class="space-y-2">
+        <label class="text-sm font-medium">{{ t('artist.rating') }}</label>
+        <StarRating v-model="form.rating" />
+      </div>
+
+      <!-- Tags -->
+      <div class="space-y-2">
+        <label class="text-sm font-medium">{{ t('artist.tags') }}</label>
+        <div class="flex gap-2">
+          <Input
+            v-model="newTag"
+            :placeholder="t('artist.tagInputPlaceholder')"
+            class="flex-1"
+            @keydown.enter.prevent="addTag"
+          />
+          <Button variant="outline" size="icon" class="h-9 w-9" @click="addTag">
+            <Plus class="h-4 w-4" />
+          </Button>
+        </div>
+        <div v-if="form.tags.length" class="flex flex-wrap gap-1.5 pt-1">
+          <Badge
+            v-for="tag in form.tags"
+            :key="tag"
+            variant="secondary"
+            class="gap-1 cursor-pointer"
+            @click="removeTag(tag)"
+          >
+            {{ tag }}
+            <X class="h-3 w-3" />
+          </Badge>
+        </div>
+      </div>
+
+      <!-- Image (single) -->
+      <div class="space-y-2">
+        <label class="text-sm font-medium">{{ t('artist.sampleImage') }}</label>
+        <DropZone
+          v-if="imagePreviews.length === 0"
+          @files="handleFiles"
+          :multiple="false"
+          :label="t('artist.addSampleImage')"
+          :sublabel="t('artist.sampleImageHint')"
+        />
+        <div v-if="imagePreviews.length" class="pt-2">
+          <div class="group relative aspect-3/4 max-w-[200px] overflow-hidden rounded-lg border border-border/50">
+            <img :src="imagePreviews[0]" class="h-full w-full object-cover" />
+            <button
+              class="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+              @click="removeImage(0)"
+            >
+              <X class="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
-      </ScrollArea>
+      </div>
+    </div>
 
-      <!-- Footer -->
-      <div class="border-t border-border/40 px-6 py-4 flex items-center gap-2">
+    <template #footer>
+      <div class="flex items-center gap-2">
         <!-- Delete button only when editing -->
         <Button
           v-if="editArtist"
@@ -351,7 +297,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
           <Trash2 class="h-4 w-4" />
           {{ t('artist.deleteArtist') }}
         </Button>
-        <Button variant="outline" @click="cancel">{{ t('common.cancel') }}</Button>
+        <Button variant="outline" class="ml-auto" @click="onOpenChange(false)">{{ t('common.cancel') }}</Button>
         <Button
           @click="save"
           :disabled="!form.name.trim() || !form.prompt.trim()"
@@ -359,6 +305,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
           {{ editArtist ? t('artist.saveChanges') : t('artist.addArtist') }}
         </Button>
       </div>
-    </div>
-  </Transition>
+    </template>
+  </SidePanel>
 </template>

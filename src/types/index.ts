@@ -70,6 +70,9 @@ export interface AIGCImage {
   filename: string
   imageData: Blob
   thumbnail: Blob
+  /** 原图像素宽高(非索引字段,旧数据缺省,由 backfillImageDims 回填;无需升 Dexie schema 版本) */
+  width?: number
+  height?: number
   source: ImageSource
   prompt: string
   negativePrompt: string

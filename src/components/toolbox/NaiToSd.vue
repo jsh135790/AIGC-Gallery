@@ -1,23 +1,17 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ArrowRightLeft } from 'lucide-vue-next'
 import { useI18n } from '@/composables/useI18n'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import EmptyState from '@/components/common/EmptyState.vue'
 
 const { t } = useI18n()
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto">
-    <Card>
-      <CardHeader>
-        <CardTitle>{{ t('toolbox.naiToSd') }}</CardTitle>
-        <CardDescription>{{ t('toolbox.naiToSdDesc') }}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div class="text-sm text-muted-foreground">
-          功能开发中...
-        </div>
-      </CardContent>
-    </Card>
+  <div class="max-w-5xl mx-auto">
+    <EmptyState :title="t('toolbox.naiToSd')" :description="t('toolbox.wip')">
+      <template #icon>
+        <ArrowRightLeft />
+      </template>
+    </EmptyState>
   </div>
 </template>

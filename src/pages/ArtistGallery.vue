@@ -4,7 +4,6 @@ import { Plus, Heart, ArrowUpDown, Download, Upload, SlidersHorizontal } from 'l
 import { useArtistStore } from '@/stores/artistStore'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
-import { useBlurEffect } from '@/composables/useBlurEffect'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -21,15 +20,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import SearchBar from '@/components/common/SearchBar.vue'
+import AppShell from '@/components/layout/AppShell.vue'
 import ArtistGrid from '@/components/gallery/ArtistGrid.vue'
 import ArtistForm from '@/components/gallery/ArtistForm.vue'
-import ArtistPageTabs from '@/components/gallery/ArtistPageTabs.vue'
+import ArtistGroupPanel from '@/components/gallery/ArtistGroupPanel.vue'
 import type { Artist } from '@/types'
 
 const store = useArtistStore()
 const toast = useToast()
 const { t, translateCategory } = useI18n()
-const { blurEnabled } = useBlurEffect()
 
 const formOpen = ref(false)
 const editingArtist = ref<Artist | null>(null)
@@ -105,94 +104,87 @@ function copyPrompt(_prompt: string) {
 </script>
 
 <template>
-  <div class="container mx-auto px-4 max-w-7xl">
-    <!-- Sticky header: tabs + toolbar -->
-    <div class="sticky top-14 z-30 -mx-4 px-4" :class="blurEnabled ? 'bg-background/85 backdrop-blur-md' : 'bg-background/95'">
-      <!-- Page Tabs -->
-      <ArtistPageTabs />
+  <AppShell>
+    <template #sidebar>
+      <ArtistGroupPanel />
+    </template>
 
-      <!-- Toolbar -->
-      <div class="border-b border-border/40 py-3">
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div class="flex flex-1 items-center gap-3">
-          <SearchBar
-            v-model="store.searchQuery"
-            :placeholder="t('artist.searchPlaceholder')"
-            class="flex-1 max-w-sm"
-          />
-          <Select v-model="store.selectedCategory">
-            <SelectTrigger class="w-[120px] bg-muted/50 cursor-pointer">
-              <SelectValue :placeholder="t('artist.allCategories')" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{{ t('artist.allCategories') }}</SelectItem>
-              <SelectItem
-                v-for="cat in store.categories.filter(c => c !== 'all')"
-                :key="cat"
-                :value="cat"
-              >
-                {{ translateCategory(cat) }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div class="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            class="gap-1.5 cursor-pointer"
-            :class="store.showFavoritesOnly && 'bg-rose-500/10 border-rose-500/30 text-rose-500'"
-            :aria-label="t('common.favorites')"
-            @click="store.showFavoritesOnly = !store.showFavoritesOnly"
+    <template #toolbar>
+      <SearchBar
+        v-model="store.searchQuery"
+        :placeholder="t('artist.searchPlaceholder')"
+        class="w-full max-w-xs"
+      />
+      <Select v-model="store.selectedCategory">
+        <SelectTrigger class="h-9 w-[120px] shrink-0 bg-muted/50 cursor-pointer">
+          <SelectValue :placeholder="t('artist.allCategories')" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">{{ t('artist.allCategories') }}</SelectItem>
+          <SelectItem
+            v-for="cat in store.categories.filter(c => c !== 'all')"
+            :key="cat"
+            :value="cat"
           >
-            <Heart class="h-4 w-4" :class="store.showFavoritesOnly && 'fill-current'" />
-            <span class="hidden sm:inline">{{ t('common.favorites') }}</span>
-          </Button>
+            {{ translateCategory(cat) }}
+          </SelectItem>
+        </SelectContent>
+      </Select>
+    </template>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger as-child>
-              <Button variant="outline" size="sm" class="gap-1.5 cursor-pointer" :aria-label="t('common.more')">
-                <SlidersHorizontal class="h-4 w-4" />
-                <span class="hidden sm:inline">{{ t('common.more') }}</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem @click="handleExport" class="gap-2">
-                <Download class="h-4 w-4" />
-                {{ t('artist.exportFavorites') }}
-              </DropdownMenuItem>
-              <DropdownMenuItem @click="handleImportClick" class="gap-2">
-                <Upload class="h-4 w-4" />
-                {{ t('artist.importData') }}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem @click="store.sortField = 'name'; store.sortOrder = 'asc'" class="gap-2">
-                <ArrowUpDown class="h-4 w-4" />
-                {{ t('artist.sortByName') }}
-              </DropdownMenuItem>
-              <DropdownMenuItem @click="store.sortField = 'rating'; store.sortOrder = 'desc'" class="gap-2">
-                <ArrowUpDown class="h-4 w-4" />
-                {{ t('artist.sortByRating') }}
-              </DropdownMenuItem>
-              <DropdownMenuItem @click="store.sortField = 'createdAt'; store.sortOrder = 'desc'" class="gap-2">
-                <ArrowUpDown class="h-4 w-4" />
-                {{ t('artist.sortByTime') }}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+    <template #toolbar-end>
+      <Button
+        variant="outline"
+        size="sm"
+        class="gap-1.5 h-8 cursor-pointer"
+        :class="store.showFavoritesOnly && 'bg-primary/10 border-primary/30 text-primary'"
+        :aria-label="t('common.favorites')"
+        @click="store.showFavoritesOnly = !store.showFavoritesOnly"
+      >
+        <Heart class="h-4 w-4" :class="store.showFavoritesOnly && 'fill-current'" />
+        <span class="hidden sm:inline">{{ t('common.favorites') }}</span>
+      </Button>
 
-          <Button size="sm" class="gap-1.5 cursor-pointer" :aria-label="t('artist.addArtist')" @click="openAdd">
-            <Plus class="h-4 w-4" />
-            <span class="hidden sm:inline">{{ t('artist.addArtist') }}</span>
+      <DropdownMenu>
+        <DropdownMenuTrigger as-child>
+          <Button variant="outline" size="sm" class="gap-1.5 h-8 cursor-pointer" :aria-label="t('common.more')">
+            <SlidersHorizontal class="h-4 w-4" />
+            <span class="hidden sm:inline">{{ t('common.more') }}</span>
           </Button>
-        </div>
-      </div>
-      </div>
-    </div>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem @click="handleExport" class="gap-2">
+            <Download class="h-4 w-4" />
+            {{ t('artist.exportFavorites') }}
+          </DropdownMenuItem>
+          <DropdownMenuItem @click="handleImportClick" class="gap-2">
+            <Upload class="h-4 w-4" />
+            {{ t('artist.importData') }}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem @click="store.sortField = 'name'; store.sortOrder = 'asc'" class="gap-2">
+            <ArrowUpDown class="h-4 w-4" />
+            {{ t('artist.sortByName') }}
+          </DropdownMenuItem>
+          <DropdownMenuItem @click="store.sortField = 'rating'; store.sortOrder = 'desc'" class="gap-2">
+            <ArrowUpDown class="h-4 w-4" />
+            {{ t('artist.sortByRating') }}
+          </DropdownMenuItem>
+          <DropdownMenuItem @click="store.sortField = 'createdAt'; store.sortOrder = 'desc'" class="gap-2">
+            <ArrowUpDown class="h-4 w-4" />
+            {{ t('artist.sortByTime') }}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Button size="sm" class="gap-1.5 h-8 cursor-pointer" :aria-label="t('artist.addArtist')" @click="openAdd">
+        <Plus class="h-4 w-4" />
+        <span class="hidden sm:inline">{{ t('artist.addArtist') }}</span>
+      </Button>
+    </template>
 
     <!-- Results count -->
-    <p class="mt-4 mb-4 text-sm text-muted-foreground">
+    <p class="mb-4 font-mono text-2xs text-muted-foreground">
       {{ t('artist.totalCount', { count: String(store.filteredArtists.length) }) }}
       <span v-if="currentPageLabel"> · {{ currentPageLabel }}</span>
       <span v-if="store.searchQuery">{{ t('artist.searchResult', { query: store.searchQuery }) }}</span>
@@ -208,7 +200,7 @@ function copyPrompt(_prompt: string) {
       @create-first="openAdd"
     />
 
-    <!-- Add/Edit Form Sheet (with delete) -->
+    <!-- Add/Edit Form Panel (with delete) -->
     <ArtistForm
       :open="formOpen"
       :edit-artist="editingArtist"
@@ -225,5 +217,5 @@ function copyPrompt(_prompt: string) {
       class="hidden"
       @change="handleImport"
     />
-  </div>
+  </AppShell>
 </template>

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed, toRaw } from 'vue'
+import { ref, computed, toRaw, watch } from 'vue'
 import { db } from '@/lib/db'
 import type { AIGCImage, AIGCFolder, Tag, SortOrder, FolderNavItem } from '@/types'
 
@@ -30,6 +30,25 @@ export const useAigcStore = defineStore('aigc', () => {
   const sortField = ref<'createdAt' | 'filename'>('createdAt')
   const sortOrder = ref<SortOrder>('desc')
   const isLoading = ref(false)
+  let imageMutationQueue: Promise<void> = Promise.resolve()
+
+  function enqueueImageMutation<T>(operation: () => Promise<T>): Promise<T> {
+    const result = imageMutationQueue.then(operation)
+    imageMutationQueue = result.then(
+      () => undefined,
+      () => undefined
+    )
+    return result
+  }
+
+  // ===== View mode (grid / masonry), persisted =====
+  const VIEW_MODE_KEY = 'aigc.viewMode'
+  const viewMode = ref<'grid' | 'masonry'>(
+    localStorage.getItem(VIEW_MODE_KEY) === 'masonry' ? 'masonry' : 'grid'
+  )
+  watch(viewMode, (v) => {
+    localStorage.setItem(VIEW_MODE_KEY, v)
+  })
 
   // Navigation items for sidebar
   const folderNavItems = computed<FolderNavItem[]>(() => {
@@ -101,178 +120,412 @@ export const useAigcStore = defineStore('aigc', () => {
   })
 
   // ===== Data Loading =====
-  async function loadAll() {
-    isLoading.value = true
-    try {
-      const [imgs, flds, tgs] = await Promise.all([
+  async function reconcileTagsFromImages() {
+    return db.transaction('rw', db.aigcImages, db.tags, async () => {
+      const [storedImages, storedTags] = await Promise.all([
         db.aigcImages.toArray(),
-        db.aigcFolders.toArray(),
         db.tags.toArray(),
       ])
-      images.value = imgs
-      folders.value = flds
-      tags.value = tgs
-    } finally {
-      isLoading.value = false
+      const actualCounts = new Map<string, number>()
+      for (const image of storedImages) {
+        for (const name of uniqueTagNames(image.tags ?? [])) {
+          actualCounts.set(name, (actualCounts.get(name) ?? 0) + 1)
+        }
+      }
+
+      const needsReconciliation =
+        storedTags.length !== actualCounts.size ||
+        storedTags.some(tag => actualCounts.get(tag.name) !== tag.count)
+
+      if (needsReconciliation) {
+        const existingByName = new Map(storedTags.map(tag => [tag.name, tag]))
+        for (const tag of storedTags) {
+          const actualCount = actualCounts.get(tag.name)
+          if (actualCount === undefined) {
+            await db.tags.delete(tag.id!)
+          } else if (actualCount !== tag.count) {
+            await db.tags.update(tag.id!, { count: actualCount })
+          }
+        }
+        for (const [name, count] of actualCounts) {
+          if (!existingByName.has(name)) {
+            await db.tags.add({ name, type: 'auto', count } as Tag)
+          }
+        }
+        return { storedImages, storedTags: await db.tags.toArray() }
+      }
+
+      return { storedImages, storedTags }
+    })
+  }
+
+  function loadAll() {
+    return enqueueImageMutation(async () => {
+      isLoading.value = true
+      try {
+        const [reconciled, flds] = await Promise.all([
+          reconcileTagsFromImages(),
+          db.aigcFolders.toArray(),
+        ])
+        images.value = reconciled.storedImages
+        folders.value = flds
+        tags.value = reconciled.storedTags
+      } finally {
+        isLoading.value = false
+      }
+      // Fire-and-forget: backfill dimensions for rows imported before width/height existed
+      void backfillImageDims()
+    })
+  }
+
+  // ===== Dimension backfill (for masonry) =====
+  let dimsBackfillStarted = false
+  /**
+   * 旧数据没有 width/height 字段(瀑布流需要)。对缺失行逐个用缩略图
+   * createImageBitmap 量取比例并写回;只跑一次,单行失败跳过不阻塞。
+   * 注:量的是缩略图像素(足够算 aspect-ratio),非原图分辨率。
+   */
+  async function backfillImageDims() {
+    if (dimsBackfillStarted) return
+    dimsBackfillStarted = true
+
+    const missing = images.value.filter(i => !i.width || !i.height)
+    for (const img of missing) {
+      try {
+        const bitmap = await createImageBitmap(img.thumbnail || img.imageData)
+        const width = bitmap.width
+        const height = bitmap.height
+        bitmap.close()
+        if (!width || !height) continue
+
+        // Patch memory + database (non-indexed fields, no schema bump needed)
+        img.width = width
+        img.height = height
+        await db.aigcImages.update(img.id!, { width, height })
+      } catch {
+        // Skip failed rows silently; they fall back to square in masonry
+      }
+    }
+  }
+
+  function uniqueTagNames(tagNames: string[]) {
+    return [...new Set(tagNames)]
+  }
+
+  function addTagDelta(deltas: Map<string, number>, tagNames: string[], amount: number) {
+    for (const name of uniqueTagNames(tagNames)) {
+      deltas.set(name, (deltas.get(name) ?? 0) + amount)
+    }
+  }
+
+  function tagDeltasForChange(previousTags: string[], nextTags: string[]) {
+    const deltas = new Map<string, number>()
+    const previous = new Set(previousTags)
+    const next = new Set(nextTags)
+
+    for (const name of previous) {
+      if (!next.has(name)) deltas.set(name, -1)
+    }
+    for (const name of next) {
+      if (!previous.has(name)) deltas.set(name, 1)
+    }
+    return deltas
+  }
+
+  /** Must run inside an aigcImages/tags read-write transaction. */
+  async function applyTagDeltas(deltas: Map<string, number>, defaultType: Tag['type']) {
+    for (const [name, delta] of deltas) {
+      if (!delta) continue
+
+      const existing = await db.tags.where('name').equals(name).first()
+      if (existing) {
+        const count = existing.count + delta
+        if (count <= 0) {
+          await db.tags.delete(existing.id!)
+        } else {
+          await db.tags.update(existing.id!, { count })
+        }
+      } else if (delta > 0) {
+        await db.tags.add({ name, type: defaultType, count: delta } as Tag)
+      }
     }
   }
 
   // ===== Image CRUD =====
+  function addImages(imageDrafts: Array<Omit<AIGCImage, 'id' | 'createdAt' | 'updatedAt'>>): Promise<number[]> {
+    return enqueueImageMutation(async () => {
+      if (imageDrafts.length === 0) return []
+
+      const now = new Date()
+      const records = imageDrafts.map(image => {
+        const clean = stripProxy(image as Record<string, unknown>)
+        return {
+          ...clean,
+          tags: uniqueTagNames(image.tags),
+          createdAt: now,
+          updatedAt: now,
+        } as AIGCImage
+      })
+      const tagDeltas = new Map<string, number>()
+      for (const record of records) addTagDelta(tagDeltas, record.tags, 1)
+
+      let ids: number[] = []
+      let updatedTags: Tag[] = []
+      await db.transaction('rw', db.aigcImages, db.tags, async () => {
+        const addedKeys = await db.aigcImages.bulkAdd(records, { allKeys: true })
+        ids = addedKeys.map(id => {
+          if (id === undefined) throw new Error('Dexie did not return an image ID')
+          return id
+        })
+        await applyTagDeltas(tagDeltas, 'auto')
+        updatedTags = await db.tags.toArray()
+      })
+
+      images.value = [...images.value, ...records.map((record, index) => ({ ...record, id: ids[index] }))]
+      tags.value = updatedTags
+      return ids
+    })
+  }
+
   async function addImage(image: Omit<AIGCImage, 'id' | 'createdAt' | 'updatedAt'>) {
-    const now = new Date()
-    const clean = stripProxy(image as Record<string, unknown>)
-    const id = await db.aigcImages.add({
-      ...clean,
-      createdAt: now,
-      updatedAt: now,
-    } as AIGCImage)
-    // Update tag counts
-    for (const tagName of image.tags) {
-      await upsertTag(tagName, 'auto')
-    }
-    await loadAll()
+    const [id] = await addImages([image])
     return id
   }
 
   async function deleteImage(id: number) {
-    // Remove from memory immediately
-    images.value = images.value.filter(i => i.id !== id)
-
-    // Delete from database in background
-    await db.aigcImages.delete(id)
+    await deleteImages([id])
   }
 
-  async function deleteImages(ids: number[]) {
-    // Remove from memory immediately
-    images.value = images.value.filter(i => !ids.includes(i.id!))
+  function deleteImages(ids: number[]) {
+    return enqueueImageMutation(async () => {
+      const uniqueIds = [...new Set(ids)]
+      if (uniqueIds.length === 0) return
 
-    // Delete from database in background
-    await db.aigcImages.bulkDelete(ids)
+      const imageSnapshot = images.value.slice()
+      const tagSnapshot = tags.value.map(tag => ({ ...tag }))
+      images.value = images.value.filter(image => !uniqueIds.includes(image.id!))
+
+      try {
+        let updatedTags: Tag[] = []
+        await db.transaction('rw', db.aigcImages, db.tags, async () => {
+          const deletedImages = await db.aigcImages.bulkGet(uniqueIds)
+          const existingIds = deletedImages.flatMap(image => image?.id ?? [])
+          const tagDeltas = new Map<string, number>()
+          for (const image of deletedImages) {
+            if (image) addTagDelta(tagDeltas, image.tags, -1)
+          }
+
+          if (existingIds.length > 0) await db.aigcImages.bulkDelete(existingIds)
+          await applyTagDeltas(tagDeltas, 'auto')
+          updatedTags = await db.tags.toArray()
+        })
+        tags.value = updatedTags
+      } catch (error) {
+        images.value = imageSnapshot
+        tags.value = tagSnapshot
+        throw error
+      }
+    })
   }
 
-  async function updateImage(id: number, data: Partial<AIGCImage>) {
-    const clean = stripProxy(data as Record<string, unknown>)
-    const now = new Date()
-
-    // Update in memory immediately
-    const img = images.value.find(i => i.id === id)
-    if (img) {
-      Object.assign(img, clean, { updatedAt: now })
-    }
-
-    // Update in database in background
-    await db.aigcImages.update(id, { ...clean, updatedAt: now })
-  }
-
-  async function toggleImageFavorite(id: number) {
-    const img = images.value.find(i => i.id === id)
-    if (img) {
-      const newFavoriteState = !img.isFavorite
+  function updateImage(id: number, data: Partial<AIGCImage>) {
+    return enqueueImageMutation(async () => {
+      const clean = stripProxy(data as Record<string, unknown>)
       const now = new Date()
+      const hasTags = Object.prototype.hasOwnProperty.call(clean, 'tags')
+      if (hasTags) clean.tags = uniqueTagNames(clean.tags as string[])
 
-      // Update in memory immediately for instant UI feedback
-      img.isFavorite = newFavoriteState
-      img.updatedAt = now
+      const image = images.value.find(item => item.id === id)
+      const imageSnapshot = image ? { ...image } : undefined
+      const tagSnapshot = tags.value.map(tag => ({ ...tag }))
+      if (image) Object.assign(image, clean, { updatedAt: now })
 
-      // Update in database in background
-      await db.aigcImages.update(id, { isFavorite: newFavoriteState, updatedAt: now })
-    }
+      try {
+        let updatedTags: Tag[] | undefined
+        await db.transaction('rw', db.aigcImages, db.tags, async () => {
+          const storedImage = await db.aigcImages.get(id)
+          const updated = await db.aigcImages.update(id, { ...clean, updatedAt: now })
+          if (updated && hasTags && storedImage) {
+            await applyTagDeltas(tagDeltasForChange(storedImage.tags, clean.tags as string[]), 'manual')
+            updatedTags = await db.tags.toArray()
+          }
+        })
+        if (updatedTags) tags.value = updatedTags
+      } catch (error) {
+        if (image && imageSnapshot) Object.assign(image, imageSnapshot)
+        tags.value = tagSnapshot
+        throw error
+      }
+    })
   }
 
-  async function moveImagesToFolder(imageIds: number[], folderId: number | null) {
-    const now = new Date()
+  function toggleImageFavorite(id: number) {
+    return enqueueImageMutation(async () => {
+      const image = images.value.find(item => item.id === id)
+      if (!image) return
 
-    // Update in memory immediately for instant UI feedback
-    for (const id of imageIds) {
-      const img = images.value.find(i => i.id === id)
-      if (img) {
-        img.folderId = folderId
-        img.updatedAt = now
+      const snapshot = { isFavorite: image.isFavorite, updatedAt: image.updatedAt }
+      const newFavoriteState = !image.isFavorite
+      const now = new Date()
+      image.isFavorite = newFavoriteState
+      image.updatedAt = now
+
+      try {
+        await db.aigcImages.update(id, { isFavorite: newFavoriteState, updatedAt: now })
+      } catch (error) {
+        image.isFavorite = snapshot.isFavorite
+        image.updatedAt = snapshot.updatedAt
+        throw error
       }
-    }
-
-    // Update in database in background
-    await Promise.all(
-      imageIds.map(id => db.aigcImages.update(id, { folderId, updatedAt: now }))
-    )
+    })
   }
 
-  async function batchAddTags(imageIds: number[], newTags: string[]) {
-    const now = new Date()
+  function moveImagesToFolder(imageIds: number[], folderId: number | null) {
+    return enqueueImageMutation(async () => {
+      const uniqueIds = [...new Set(imageIds)]
+      if (uniqueIds.length === 0) return
 
-    // Update in memory immediately
-    for (const id of imageIds) {
-      const img = images.value.find(i => i.id === id)
-      if (img) {
-        const merged = [...new Set([...img.tags, ...newTags])]
-        img.tags = merged
-        img.updatedAt = now
-        // Update in database
-        await db.aigcImages.update(id, { tags: merged, updatedAt: now })
+      const now = new Date()
+      const snapshots = new Map<number, Pick<AIGCImage, 'folderId' | 'updatedAt'>>()
+      for (const id of uniqueIds) {
+        const image = images.value.find(item => item.id === id)
+        if (image) {
+          snapshots.set(id, { folderId: image.folderId, updatedAt: image.updatedAt })
+          image.folderId = folderId
+          image.updatedAt = now
+        }
       }
-    }
 
-    // Update tag counts
-    for (const t of newTags) {
-      await upsertTag(t, 'manual')
-    }
+      try {
+        await db.transaction('rw', db.aigcImages, async () => {
+          await Promise.all(
+            uniqueIds.map(id => db.aigcImages.update(id, { folderId, updatedAt: now }))
+          )
+        })
+      } catch (error) {
+        for (const [id, snapshot] of snapshots) {
+          const image = images.value.find(item => item.id === id)
+          if (image) Object.assign(image, snapshot)
+        }
+        throw error
+      }
+    })
+  }
 
-    // Reload tags to get updated counts
-    tags.value = await db.tags.toArray()
+  function batchAddTags(imageIds: number[], newTags: string[]) {
+    return enqueueImageMutation(async () => {
+      const uniqueIds = [...new Set(imageIds)]
+      const uniqueNewTags = uniqueTagNames(newTags)
+      if (uniqueIds.length === 0 || uniqueNewTags.length === 0) return
+
+      const now = new Date()
+      const imageSnapshots = new Map<number, AIGCImage>()
+      const tagSnapshot = tags.value.map(tag => ({ ...tag }))
+      for (const id of uniqueIds) {
+        const image = images.value.find(item => item.id === id)
+        if (image) {
+          imageSnapshots.set(id, { ...image })
+          const mergedTags = uniqueTagNames([...image.tags, ...uniqueNewTags])
+          if (mergedTags.length !== image.tags.length) {
+            image.tags = mergedTags
+            image.updatedAt = now
+          }
+        }
+      }
+
+      try {
+        let updatedTags: Tag[] = []
+        await db.transaction('rw', db.aigcImages, db.tags, async () => {
+          const storedImages = await db.aigcImages.bulkGet(uniqueIds)
+          const tagDeltas = new Map<string, number>()
+
+          for (const image of storedImages) {
+            if (!image?.id) continue
+            const mergedTags = uniqueTagNames([...image.tags, ...uniqueNewTags])
+            const addedTags = mergedTags.filter(name => !image.tags.includes(name))
+            if (addedTags.length === 0) continue
+
+            await db.aigcImages.update(image.id, { tags: mergedTags, updatedAt: now })
+            addTagDelta(tagDeltas, addedTags, 1)
+          }
+
+          await applyTagDeltas(tagDeltas, 'manual')
+          updatedTags = await db.tags.toArray()
+        })
+        tags.value = updatedTags
+      } catch (error) {
+        for (const [id, snapshot] of imageSnapshots) {
+          const image = images.value.find(item => item.id === id)
+          if (image) Object.assign(image, snapshot)
+        }
+        tags.value = tagSnapshot
+        throw error
+      }
+    })
   }
 
   // ===== Folder CRUD =====
-  async function addFolder(folder: Omit<AIGCFolder, 'id' | 'createdAt' | 'updatedAt' | 'sortOrder'>) {
-    const maxOrder = folders.value.reduce((max, f) => Math.max(max, f.sortOrder), 0)
-    const now = new Date()
-    const id = await db.aigcFolders.add({
-      ...folder,
-      sortOrder: maxOrder + 1,
-      createdAt: now,
-      updatedAt: now,
-    } as AIGCFolder)
-    await loadAll()
-    return id
+  function addFolder(folder: Omit<AIGCFolder, 'id' | 'createdAt' | 'updatedAt' | 'sortOrder'>) {
+    return enqueueImageMutation(async () => {
+      const maxOrder = folders.value.reduce((max, item) => Math.max(max, item.sortOrder), 0)
+      const now = new Date()
+      const clean = stripProxy(folder as Record<string, unknown>)
+      const record = {
+        ...clean,
+        sortOrder: maxOrder + 1,
+        createdAt: now,
+        updatedAt: now,
+      } as AIGCFolder
+      const id = await db.aigcFolders.add(record)
+      if (id === undefined) throw new Error('Dexie did not return a folder ID')
+      folders.value = [...folders.value, { ...record, id }]
+      return id
+    })
   }
 
-  async function updateFolder(id: number, data: Partial<AIGCFolder>) {
-    const now = new Date()
+  function updateFolder(id: number, data: Partial<AIGCFolder>) {
+    return enqueueImageMutation(async () => {
+      const clean = stripProxy(data as Record<string, unknown>)
+      const now = new Date()
+      const folder = folders.value.find(item => item.id === id)
+      const snapshot = folder ? { ...folder } : undefined
+      if (folder) Object.assign(folder, clean, { updatedAt: now })
 
-    // Update in memory immediately
-    const folder = folders.value.find(f => f.id === id)
-    if (folder) {
-      Object.assign(folder, data, { updatedAt: now })
-    }
-
-    // Update in database in background
-    await db.aigcFolders.update(id, { ...data, updatedAt: now })
+      try {
+        await db.aigcFolders.update(id, { ...clean, updatedAt: now })
+      } catch (error) {
+        if (folder && snapshot) Object.assign(folder, snapshot)
+        throw error
+      }
+    })
   }
 
-  async function deleteFolder(id: number) {
-    // Update images in memory immediately
-    const imagesInFolder = images.value.filter(i => i.folderId === id)
-    for (const img of imagesInFolder) {
-      img.folderId = null
-    }
+  function deleteFolder(id: number) {
+    return enqueueImageMutation(async () => {
+      const folderSnapshot = folders.value.slice()
+      const imageSnapshots = new Map<number, Pick<AIGCImage, 'folderId'>>()
+      for (const image of images.value) {
+        if (image.folderId === id && image.id !== undefined) {
+          imageSnapshots.set(image.id, { folderId: image.folderId })
+          image.folderId = null
+        }
+      }
+      folders.value = folders.value.filter(folder => folder.id !== id)
 
-    // Remove folder from memory
-    folders.value = folders.value.filter(f => f.id !== id)
-
-    // Update database in background
-    await Promise.all(
-      imagesInFolder.map(i => db.aigcImages.update(i.id!, { folderId: null }))
-    )
-    await db.aigcFolders.delete(id)
-  }
-
-  // ===== Tag CRUD =====
-  async function upsertTag(name: string, type: 'auto' | 'manual') {
-    const existing = await db.tags.where('name').equals(name).first()
-    if (existing) {
-      await db.tags.update(existing.id!, { count: existing.count + 1 })
-    } else {
-      await db.tags.add({ name, type, count: 1 } as Tag)
-    }
+      try {
+        await db.transaction('rw', db.aigcImages, db.aigcFolders, async () => {
+          await db.aigcImages.where('folderId').equals(id).modify({ folderId: null })
+          await db.aigcFolders.delete(id)
+        })
+      } catch (error) {
+        for (const [imageId, snapshot] of imageSnapshots) {
+          const image = images.value.find(item => item.id === imageId)
+          if (image) Object.assign(image, snapshot)
+        }
+        folders.value = folderSnapshot
+        throw error
+      }
+    })
   }
 
   return {
@@ -285,9 +538,11 @@ export const useAigcStore = defineStore('aigc', () => {
     sortField,
     sortOrder,
     isLoading,
+    viewMode,
     folderNavItems,
     filteredImages,
     loadAll,
+    addImages,
     addImage,
     deleteImage,
     deleteImages,

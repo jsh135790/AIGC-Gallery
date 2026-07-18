@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, toRaw, watch } from 'vue'
 import { db } from '@/lib/db'
+import { DEFAULT_SWATCH } from '@/lib/colors'
 import type { Artist, ArtistPage, SortOrder } from '@/types'
 
 /** Strip all Vue reactive proxies so IndexedDB can structured-clone the data. */
@@ -19,7 +20,7 @@ function stripProxy<T extends Record<string, unknown>>(obj: T): T {
   return out as T
 }
 
-const DEFAULT_PAGE_COLOR = '#6366f1'
+const DEFAULT_PAGE_COLOR = DEFAULT_SWATCH
 const SELECTED_PAGE_KEY = 'artistGallery.selectedPageId'
 
 export const useArtistStore = defineStore('artist', () => {

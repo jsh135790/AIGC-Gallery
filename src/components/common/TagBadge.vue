@@ -22,9 +22,9 @@ const emit = defineEmits<{
 <template>
   <Badge
     :variant="variant"
-    class="cursor-pointer gap-1 transition-all hover:shadow-sm"
+    class="cursor-pointer gap-1 font-mono transition-colors"
     :class="[
-      size === 'sm' ? 'text-xs px-2 py-0.5' : 'text-sm px-2.5 py-1',
+      size === 'sm' ? 'text-2xs px-2 py-0.5' : 'text-xs px-2.5 py-1',
     ]"
     @click="emit('click', tag)"
   >

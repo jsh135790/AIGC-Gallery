@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue'
-import { Heart, Copy, Star, Eye } from 'lucide-vue-next'
+import { Heart, Copy, Eye } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import StarRating from '@/components/common/StarRating.vue'
 import { useI18n } from '@/composables/useI18n'
 import type { Artist } from '@/types'
 
@@ -43,10 +44,6 @@ onUnmounted(() => {
   }
 })
 
-const stars = computed(() => {
-  return Array.from({ length: 5 }, (_, i) => i < (props.artist.rating || 0))
-})
-
 // Translate category name
 const translatedCategory = computed(() => {
   if (!props.artist.category) return ''
@@ -80,7 +77,7 @@ async function copyPrompt() {
 
 <template>
   <div
-    class="group relative cursor-pointer overflow-hidden rounded-xl border border-border/40 bg-card/90 transition-all duration-300 hover:shadow-xl hover:shadow-black/10 hover:border-primary/30 dark:hover:shadow-black/40"
+    class="group relative cursor-pointer overflow-hidden rounded-lg border border-border/60 bg-card transition-colors hover:border-primary/40"
     @click="emit('view', artist)"
   >
     <!-- Image -->
@@ -97,25 +94,25 @@ async function copyPrompt() {
       </div>
 
       <!-- Overlay on hover -->
-      <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <div class="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
       <!-- Favorite button -->
       <Button
         variant="ghost"
         size="icon"
-        class="absolute top-2 right-2 h-8 w-8 cursor-pointer rounded-full bg-black/45 text-white hover:bg-black/60 transition-all"
-        :class="artist.isFavorite ? 'text-rose-500' : 'opacity-0 group-hover:opacity-100'"
+        class="absolute top-2 right-2 h-7 w-7 cursor-pointer rounded-full bg-black/50 text-white hover:bg-black/60 transition-all"
+        :class="artist.isFavorite ? 'text-primary' : 'opacity-0 group-hover:opacity-100'"
         :aria-label="t('common.favorites')"
         @click.stop="emit('toggleFavorite', artist.id!)"
       >
-        <Heart class="h-4 w-4" :class="artist.isFavorite && 'fill-current'" />
+        <Heart class="h-3.5 w-3.5" :class="artist.isFavorite && 'fill-current'" />
       </Button>
 
       <!-- Category badge -->
       <Badge
         v-if="artist.category"
         variant="secondary"
-        class="absolute top-2 left-2 bg-black/55 text-white border-none text-xs"
+        class="absolute top-2 left-2 bg-black/55 text-white border-none text-2xs"
       >
         {{ translatedCategory }}
       </Badge>
@@ -128,14 +125,7 @@ async function copyPrompt() {
           {{ artist.name }}
         </h3>
         <!-- Rating -->
-        <div class="flex shrink-0 gap-0.5">
-          <Star
-            v-for="(filled, i) in stars"
-            :key="i"
-            class="h-3 w-3"
-            :class="filled ? 'text-amber-400 fill-amber-400' : 'text-muted-foreground/30'"
-          />
-        </div>
+        <StarRating :model-value="artist.rating || 0" readonly size="sm" class="shrink-0" />
       </div>
 
       <!-- Prompt string -->
@@ -143,7 +133,7 @@ async function copyPrompt() {
         <Tooltip>
           <TooltipTrigger as-child>
             <button
-              class="flex w-full items-center gap-1.5 rounded-md bg-muted/50 px-2 py-1.5 text-xs text-muted-foreground font-mono hover:bg-muted transition-colors group/prompt"
+              class="flex w-full items-center gap-1.5 rounded-md bg-muted/50 px-2 py-1.5 font-mono text-2xs text-muted-foreground hover:bg-muted transition-colors group/prompt"
               @click.stop="copyPrompt"
             >
               <Copy class="h-3 w-3 shrink-0 opacity-50 group-hover/prompt:opacity-100" />
@@ -162,14 +152,14 @@ async function copyPrompt() {
           v-for="tag in artist.tags.slice(0, 3)"
           :key="tag"
           variant="outline"
-          class="text-[10px] px-1.5 py-0"
+          class="text-2xs px-1.5 py-0"
         >
           {{ tag }}
         </Badge>
         <Badge
           v-if="artist.tags.length > 3"
           variant="outline"
-          class="text-[10px] px-1.5 py-0 text-muted-foreground"
+          class="text-2xs px-1.5 py-0 text-muted-foreground"
         >
           +{{ artist.tags.length - 3 }}
         </Badge>

@@ -14,10 +14,10 @@ const iconMap = {
 }
 
 const colorMap = {
-  success: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-  error: 'text-red-400 bg-red-500/10 border-red-500/20',
-  warning: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-  info: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+  success: 'text-success bg-success/10 border-success/20',
+  error: 'text-destructive bg-destructive/10 border-destructive/20',
+  warning: 'text-warning bg-warning/10 border-warning/20',
+  info: 'text-info bg-info/10 border-info/20',
 }
 </script>
 

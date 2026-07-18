@@ -130,36 +130,76 @@ function unknownResult(rawText = ''): ParsedMetadata {
 
 /**
  * Generate a thumbnail blob from an image file using Canvas.
+ * Also reports the original image dimensions (already in hand in onload).
  */
-export async function generateThumbnail(file: File, maxWidth = 400): Promise<Blob> {
+export async function generateThumbnail(
+  file: File,
+  maxWidth = 400
+): Promise<{ blob: Blob; width: number; height: number }> {
   return new Promise((resolve, reject) => {
     const img = new Image()
     const url = URL.createObjectURL(file)
+    let settled = false
+
+    const revokeUrl = () => {
+      URL.revokeObjectURL(url)
+    }
+    const rejectOnce = (error: unknown, fallbackMessage: string) => {
+      if (settled) return
+      settled = true
+      try {
+        revokeUrl()
+      } finally {
+        reject(error instanceof Error ? error : new Error(fallbackMessage))
+      }
+    }
+    const resolveOnce = (result: { blob: Blob; width: number; height: number }) => {
+      if (settled) return
+      settled = true
+      try {
+        revokeUrl()
+      } finally {
+        resolve(result)
+      }
+    }
+
     img.onload = () => {
-      const ratio = maxWidth / img.width
-      const width = img.width > maxWidth ? maxWidth : img.width
-      const height = img.width > maxWidth ? Math.round(img.height * ratio) : img.height
+      try {
+        const originalWidth = img.width
+        const originalHeight = img.height
+        const ratio = maxWidth / img.width
+        const width = img.width > maxWidth ? maxWidth : img.width
+        const height = img.width > maxWidth ? Math.round(img.height * ratio) : img.height
 
-      const canvas = document.createElement('canvas')
-      canvas.width = width
-      canvas.height = height
-      const ctx = canvas.getContext('2d')!
-      ctx.drawImage(img, 0, 0, width, height)
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        if (!ctx) throw new Error('Failed to create thumbnail canvas context')
+        ctx.drawImage(img, 0, 0, width, height)
 
-      canvas.toBlob(
-        (blob) => {
-          URL.revokeObjectURL(url)
-          if (blob) resolve(blob)
-          else reject(new Error('Failed to generate thumbnail'))
-        },
-        'image/webp',
-        0.8
-      )
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolveOnce({ blob, width: originalWidth, height: originalHeight })
+            } else {
+              rejectOnce(new Error('Failed to generate thumbnail'), 'Failed to generate thumbnail')
+            }
+          },
+          'image/webp',
+          0.8
+        )
+      } catch (error) {
+        rejectOnce(error, 'Failed to generate thumbnail')
+      }
     }
     img.onerror = () => {
-      URL.revokeObjectURL(url)
-      reject(new Error('Failed to load image'))
+      rejectOnce(new Error('Failed to load image'), 'Failed to load image')
     }
-    img.src = url
+    try {
+      img.src = url
+    } catch (error) {
+      rejectOnce(error, 'Failed to load image')
+    }
   })
 }

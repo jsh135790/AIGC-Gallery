@@ -1,14 +1,18 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { Heart } from 'lucide-vue-next'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { Heart, Check } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import type { AIGCImage } from '@/types'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   image: AIGCImage
   selected?: boolean
-}>()
+  /** 瀑布流模式:按原图比例呈现(需 width/height,缺省回退方形) */
+  masonry?: boolean
+}>(), {
+  selected: false,
+  masonry: false,
+})
 
 const emit = defineEmits<{
   click: [image: AIGCImage]
@@ -34,23 +38,33 @@ onUnmounted(() => {
 const sourceLabel: Record<string, string> = {
   sd: 'SD',
   nai: 'NAI',
-  comfyui: 'Comfy',
+  comfyui: 'COMFY',
   unknown: '?',
 }
+
+// 动态比例必须内联 style(Tailwind 无法生成任意运行时值)
+const aspectStyle = computed(() => {
+  if (props.masonry && props.image.width && props.image.height) {
+    return { aspectRatio: `${props.image.width} / ${props.image.height}` }
+  }
+  return undefined
+})
 </script>
 
 <template>
   <div
-    class="group relative overflow-hidden rounded-xl border transition-all duration-300 cursor-pointer"
-    :class="[
-      selected
-        ? 'border-primary ring-2 ring-primary/20 shadow-lg'
-        : 'border-border/40 bg-card/90 hover:shadow-xl hover:shadow-primary/5 hover:border-primary/30 hover:-translate-y-0.5',
-    ]"
+    class="group relative overflow-hidden rounded-lg border bg-card transition-colors cursor-pointer"
+    :class="selected
+      ? 'border-primary ring-1 ring-primary'
+      : 'border-border/60 hover:border-primary/40'"
     @click="emit('click', image)"
   >
-    <!-- Thumbnail — fixed aspect ratio, no bottom info section -->
-    <div class="relative aspect-square overflow-hidden bg-muted/30">
+    <!-- Thumbnail -->
+    <div
+      class="relative overflow-hidden bg-muted/30"
+      :class="aspectStyle ? '' : 'aspect-square'"
+      :style="aspectStyle"
+    >
       <img
         v-if="thumbnailUrl"
         :src="thumbnailUrl"
@@ -65,20 +79,28 @@ const sourceLabel: Record<string, string> = {
       <!-- Hover overlay with info -->
       <div class="absolute inset-0 bg-linear-to-t from-black/60 via-black/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-      <!-- Source badge — monochrome theme -->
-      <Badge
-        variant="outline"
-        class="absolute top-2 left-2 text-[10px] px-1.5 py-0 bg-background/85 text-foreground/80 border-border/50"
+      <!-- Source chip — neutral mono, single-accent discipline -->
+      <span
+        class="absolute top-2 left-2 rounded-sm border border-border/50 bg-background/85 px-1.5 py-0 font-mono text-2xs uppercase text-foreground/80"
       >
         {{ sourceLabel[image.source] || '?' }}
-      </Badge>
+      </span>
+
+      <!-- Selected check (amber) -->
+      <div
+        v-if="selected"
+        class="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground"
+      >
+        <Check class="h-3 w-3" />
+      </div>
 
       <!-- Favorite -->
       <Button
+        v-else
         variant="ghost"
         size="icon"
-        class="absolute top-2 right-2 h-7 w-7 cursor-pointer rounded-full bg-black/45 text-white hover:bg-black/60"
-        :class="image.isFavorite ? 'text-rose-500' : 'opacity-0 group-hover:opacity-100'"
+        class="absolute top-2 right-2 h-7 w-7 cursor-pointer rounded-full bg-black/50 text-white hover:bg-black/60"
+        :class="image.isFavorite ? 'text-primary' : 'opacity-0 group-hover:opacity-100'"
         @click.stop="emit('toggleFavorite', image.id!)"
       >
         <Heart class="h-3.5 w-3.5" :class="image.isFavorite && 'fill-current'" />
@@ -86,7 +108,7 @@ const sourceLabel: Record<string, string> = {
 
       <!-- Filename on hover at bottom of image -->
       <div class="absolute bottom-0 left-0 right-0 px-2.5 pb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-        <p class="text-[11px] font-medium text-white truncate drop-shadow-md" :title="image.filename">
+        <p class="font-mono text-2xs font-medium text-white truncate drop-shadow-md" :title="image.filename">
           {{ image.filename }}
         </p>
       </div>

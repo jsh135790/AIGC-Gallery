@@ -48,6 +48,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'settings.global': '全局',
     'settings.artistGallery': '画师串画廊',
     'settings.blurEffect': '模糊效果',
+    'settings.accentColor': '主题色',
     'settings.autoFillName': '上传图片自动填入文件名',
     'settings.autoFillPrefix': '自动补充画师串前缀',
     'settings.autoFillPrefixHint': '需先启用「上传图片自动填入文件名」',
@@ -75,6 +76,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'common.copied': '已复制',
     'common.scrollLeft': '向左滚动',
     'common.scrollRight': '向右滚动',
+    'common.toggleSidebar': '切换侧边栏',
     'common.empty': '空空如也',
 
     // Artist Gallery
@@ -160,7 +162,12 @@ const messages: Record<Locale, Record<string, string>> = {
     'aigc.deleteSelected': '删除 ({count})',
     'aigc.uploadSuccess': '成功上传 {count} 张图片',
     'aigc.uploadFailed': '处理 {filename} 失败',
+    'aigc.uploadPartial': '成功上传 {success} 张图片，{failed} 张处理失败',
+    'aigc.uploadAllFailed': '{count} 张图片上传失败',
+    'aigc.loadFailed': '图片库加载失败',
     'aigc.deleteSuccess': '已删除 {count} 张图片',
+    'aigc.viewGrid': '网格视图',
+    'aigc.viewMasonry': '瀑布流视图',
 
     // Folder Panel
     'folder.categories': '分类目录',
@@ -181,6 +188,12 @@ const messages: Record<Locale, Record<string, string>> = {
     'detail.unfavorited': '已取消收藏',
     'detail.imageDeleted': '图片已删除',
     'detail.movedToFolder': '已移动到分类',
+    'lightbox.open': '放大查看图片',
+    'lightbox.zoomIn': '放大图片',
+    'lightbox.zoomOut': '缩小图片',
+    'lightbox.download': '下载原图',
+    'lightbox.close': '关闭图片预览',
+    'lightbox.description': '全屏图片预览，可缩放或下载原图',
 
     // Metadata Viewer
     'metadata.source': '来源',
@@ -222,11 +235,14 @@ const messages: Record<Locale, Record<string, string>> = {
     'toolbox.sdToNaiDesc': '将 Stable Diffusion 提示词转换为 NovelAI 格式',
     'toolbox.imgToPrompt': 'IMG to Prompt',
     'toolbox.imgToPromptDesc': '从图片反推生成提示词',
+    'toolbox.wip': '功能开发中,敬请期待',
 
     // Metadata Editor
     'metadata.editor.title': '元数据编辑器',
     'metadata.editor.upload': '上传图片',
     'metadata.editor.export': '导出 PNG',
+    'metadata.editor.exportFailed': '导出失败',
+    'metadata.editor.parseFailed': '无法读取图片元数据',
     'metadata.editor.reset': '重置',
     'metadata.editor.unsupported': '不支持 ComfyUI 格式',
     'metadata.editor.uploadHint': '拖拽或点击上传 PNG 图片',
@@ -253,6 +269,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'settings.global': 'Global',
     'settings.artistGallery': 'Artist Gallery',
     'settings.blurEffect': 'Blur Effect',
+    'settings.accentColor': 'Accent Color',
     'settings.autoFillName': 'Auto-fill filename on upload',
     'settings.autoFillPrefix': 'Auto-fill artist prompt prefix',
     'settings.autoFillPrefixHint': 'Requires "Auto-fill filename" to be enabled',
@@ -280,6 +297,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'common.copied': 'Copied',
     'common.scrollLeft': 'Scroll left',
     'common.scrollRight': 'Scroll right',
+    'common.toggleSidebar': 'Toggle sidebar',
     'common.empty': 'Nothing here',
 
     // Artist Gallery
@@ -365,7 +383,12 @@ const messages: Record<Locale, Record<string, string>> = {
     'aigc.deleteSelected': 'Delete ({count})',
     'aigc.uploadSuccess': 'Successfully uploaded {count} images',
     'aigc.uploadFailed': 'Failed to process {filename}',
+    'aigc.uploadPartial': 'Uploaded {success} images; {failed} failed',
+    'aigc.uploadAllFailed': 'Failed to upload {count} images',
+    'aigc.loadFailed': 'Failed to load the image library',
     'aigc.deleteSuccess': 'Deleted {count} images',
+    'aigc.viewGrid': 'Grid view',
+    'aigc.viewMasonry': 'Masonry view',
 
     // Folder Panel
     'folder.categories': 'Categories',
@@ -386,6 +409,12 @@ const messages: Record<Locale, Record<string, string>> = {
     'detail.unfavorited': 'Removed from favorites',
     'detail.imageDeleted': 'Image deleted',
     'detail.movedToFolder': 'Moved to category',
+    'lightbox.open': 'Open image preview',
+    'lightbox.zoomIn': 'Zoom in',
+    'lightbox.zoomOut': 'Zoom out',
+    'lightbox.download': 'Download original image',
+    'lightbox.close': 'Close image preview',
+    'lightbox.description': 'Full-screen image preview with zoom and download controls',
 
     // Metadata Viewer
     'metadata.source': 'Source',
@@ -427,11 +456,14 @@ const messages: Record<Locale, Record<string, string>> = {
     'toolbox.sdToNaiDesc': 'Convert Stable Diffusion prompts to NovelAI format',
     'toolbox.imgToPrompt': 'IMG to Prompt',
     'toolbox.imgToPromptDesc': 'Generate prompts from images',
+    'toolbox.wip': 'Under development, stay tuned',
 
     // Metadata Editor
     'metadata.editor.title': 'Metadata Editor',
     'metadata.editor.upload': 'Upload Image',
     'metadata.editor.export': 'Export PNG',
+    'metadata.editor.exportFailed': 'Export failed',
+    'metadata.editor.parseFailed': 'Failed to read image metadata',
     'metadata.editor.reset': 'Reset',
     'metadata.editor.unsupported': 'ComfyUI format not supported',
     'metadata.editor.uploadHint': 'Drag or click to upload PNG image',
@@ -440,6 +472,20 @@ const messages: Record<Locale, Record<string, string>> = {
     'metadata.editor.editParams': 'Edit Parameters',
     'detail.editMetadata': 'Edit Metadata',
   },
+}
+
+// Dev-only bilingual key audit: warn when zh-CN / en key sets drift apart
+if (import.meta.env.DEV) {
+  const zhKeys = new Set(Object.keys(messages['zh-CN']))
+  const enKeys = new Set(Object.keys(messages['en']))
+  const missingInEn = [...zhKeys].filter(k => !enKeys.has(k))
+  const missingInZh = [...enKeys].filter(k => !zhKeys.has(k))
+  if (missingInEn.length) {
+    console.warn('[i18n] keys missing in en:', missingInEn)
+  }
+  if (missingInZh.length) {
+    console.warn('[i18n] keys missing in zh-CN:', missingInZh)
+  }
 }
 
 // Category mapping for translation

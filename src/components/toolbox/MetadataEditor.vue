@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from '@/composables/useI18n'
-import { useMetadataEditor } from '@/composables/useMetadataEditor'
+import { cloneParsedMetadata, useMetadataEditor } from '@/composables/useMetadataEditor'
 import { useAigcStore } from '@/stores/aigcStore'
 import { useToast } from '@/composables/useToast'
 import { parseImageMetadata } from '@/lib/parser'
@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
+import DropZone from '@/components/common/DropZone.vue'
 import { Upload, RotateCcw, Download, AlertCircle } from 'lucide-vue-next'
 
 const { t } = useI18n()
@@ -26,22 +27,37 @@ const imageFile = ref<File | null>(null)
 const imageSrc = ref<string>('')
 const imageBlob = ref<Blob | null>(null)
 const source = ref<ImageSource | null>(null)
-const metadata = ref<ParsedMetadata>({
-  source: 'unknown',
-  prompt: '',
-  negativePrompt: '',
-  parameters: {},
-  rawText: ''
-})
-const originalMetadata = ref<ParsedMetadata>({
-  source: 'unknown',
-  prompt: '',
-  negativePrompt: '',
-  parameters: {},
-  rawText: ''
-})
+
+function createEmptyMetadata(): ParsedMetadata {
+  return {
+    source: 'unknown',
+    prompt: '',
+    negativePrompt: '',
+    parameters: {},
+    rawText: '',
+  }
+}
+
+const metadata = ref<ParsedMetadata>(createEmptyMetadata())
+const originalMetadata = ref<ParsedMetadata>(createEmptyMetadata())
 const isUnsupported = ref(false)
-const fileInput = ref<HTMLInputElement | null>(null)
+
+function replaceImageBlob(blob: Blob | null) {
+  const previousSrc = imageSrc.value
+  const nextSrc = blob ? URL.createObjectURL(blob) : ''
+
+  imageBlob.value = blob
+  imageSrc.value = nextSrc
+
+  if (previousSrc) {
+    URL.revokeObjectURL(previousSrc)
+  }
+}
+
+function initializeMetadata(nextMetadata: ParsedMetadata) {
+  metadata.value = cloneParsedMetadata(nextMetadata)
+  originalMetadata.value = cloneParsedMetadata(nextMetadata)
+}
 
 // Load image from AIGC store or editing state
 onMounted(async () => {
@@ -50,33 +66,25 @@ onMounted(async () => {
   if (imageId) {
     const image = aigcStore.images.find(img => img.id === Number(imageId))
     if (image) {
-      imageSrc.value = URL.createObjectURL(image.imageData)
-      imageBlob.value = image.imageData
+      replaceImageBlob(image.imageData)
       source.value = image.source
-      metadata.value = {
+      initializeMetadata({
         source: image.source,
         prompt: image.prompt,
         negativePrompt: image.negativePrompt,
-        parameters: { ...image.parameters },
+        parameters: image.parameters,
         rawText: image.rawMetadata,
-        v4Data: image.v4Data
-      }
-      originalMetadata.value = { ...metadata.value }
+        v4Data: image.v4Data,
+      })
       isUnsupported.value = image.source === 'comfyui'
     }
   } else {
     const editing = getEditingImage()
     if (editing) {
-      // Use the blob to create a fresh URL or use existing src
-      if (editing.blob) {
-        imageSrc.value = URL.createObjectURL(editing.blob)
-      } else {
-        imageSrc.value = editing.src
-      }
-      imageBlob.value = editing.blob || null
+      replaceImageBlob(editing.blob)
       source.value = editing.source
-      metadata.value = { ...editing.metadata }
-      originalMetadata.value = { ...editing.originalMetadata }
+      metadata.value = cloneParsedMetadata(editing.metadata)
+      originalMetadata.value = cloneParsedMetadata(editing.originalMetadata)
       isUnsupported.value = editing.source === 'comfyui'
     }
   }
@@ -84,61 +92,45 @@ onMounted(async () => {
 
 // Cleanup blob URL on unmount
 onUnmounted(() => {
-  if (imageSrc.value && imageSrc.value.startsWith('blob:')) {
-    URL.revokeObjectURL(imageSrc.value)
-  }
+  replaceImageBlob(null)
   clearEditingImage()
 })
 
-// Handle file upload
-const handleFileSelect = async (event: Event) => {
-  const target = event.target as HTMLInputElement
-  if (target.files && target.files[0]) {
-    await loadImage(target.files[0])
-  }
-}
-
-const handleDrop = async (event: DragEvent) => {
-  event.preventDefault()
-  if (event.dataTransfer?.files && event.dataTransfer.files[0]) {
-    await loadImage(event.dataTransfer.files[0])
-  }
-}
-
-const handleDragOver = (event: DragEvent) => {
-  event.preventDefault()
-}
-
+// Handle file upload (via common DropZone)
 const loadImage = async (file: File) => {
   if (!file.type.startsWith('image/png')) {
     error(t('metadata.editor.onlyPng'))
     return
   }
 
-  // Revoke old blob URL if exists
-  if (imageSrc.value && imageSrc.value.startsWith('blob:')) {
-    URL.revokeObjectURL(imageSrc.value)
-  }
+  let parseUrl = ''
 
-  imageFile.value = file
-  imageSrc.value = URL.createObjectURL(file)
-  imageBlob.value = file
+  try {
+    parseUrl = URL.createObjectURL(file)
+    const parsed = await parseImageMetadata(file, parseUrl)
 
-  // Parse metadata
-  const parsed = await parseImageMetadata(file, imageSrc.value)
-  source.value = parsed.source
-  metadata.value = { ...parsed }
-  originalMetadata.value = { ...parsed }
-  isUnsupported.value = parsed.source === 'comfyui'
+    imageFile.value = file
+    replaceImageBlob(file)
+    source.value = parsed.source
+    initializeMetadata(parsed)
+    isUnsupported.value = parsed.source === 'comfyui'
 
-  if (isUnsupported.value) {
-    error(t('metadata.editor.unsupported'))
+    if (isUnsupported.value) {
+      error(t('metadata.editor.unsupported'))
+    }
+  } catch (err) {
+    console.error('Failed to parse image metadata:', err)
+    error(t('metadata.editor.parseFailed'))
+  } finally {
+    if (parseUrl) {
+      URL.revokeObjectURL(parseUrl)
+    }
   }
 }
 
 // Reset to original metadata
 const handleReset = () => {
-  metadata.value = { ...originalMetadata.value }
+  metadata.value = cloneParsedMetadata(originalMetadata.value)
   info(t('metadata.editor.reset'))
 }
 
@@ -162,14 +154,8 @@ const handleExport = async () => {
     success(t('metadata.editor.export'))
   } catch (err) {
     console.error('Export failed:', err)
-    error('Export failed')
+    error(t('metadata.editor.exportFailed'))
   }
-}
-
-const getSourceBadgeVariant = (src: ImageSource) => {
-  if (src === 'sd') return 'default'
-  if (src === 'nai') return 'secondary'
-  return 'destructive'
 }
 
 const getSourceLabel = (src: ImageSource) => {
@@ -180,42 +166,32 @@ const getSourceLabel = (src: ImageSource) => {
 }
 
 const handleClearImage = () => {
-  if (imageSrc.value && imageSrc.value.startsWith('blob:')) {
-    URL.revokeObjectURL(imageSrc.value)
-  }
-  imageSrc.value = ''
+  replaceImageBlob(null)
   imageFile.value = null
+  source.value = null
+  initializeMetadata(createEmptyMetadata())
+  isUnsupported.value = false
   clearEditingImage()
 }
 </script>
 
 <template>
-  <div class="max-w-6xl mx-auto">
+  <div class="max-w-5xl mx-auto">
     <Card>
       <CardHeader>
-        <CardTitle>{{ t('metadata.editor.title') }}</CardTitle>
+        <CardTitle class="text-base">{{ t('metadata.editor.title') }}</CardTitle>
         <CardDescription>{{ t('toolbox.metadataEditorDesc') }}</CardDescription>
       </CardHeader>
       <CardContent>
         <!-- Upload Area -->
-        <div
+        <DropZone
           v-if="!imageSrc"
-          class="border-2 border-dashed rounded-lg p-12 text-center cursor-pointer hover:border-primary transition-colors"
-          @drop="handleDrop"
-          @dragover="handleDragOver"
-          @click="() => fileInput?.click()"
-        >
-          <Upload class="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-          <p class="text-sm text-muted-foreground mb-2">{{ t('metadata.editor.uploadHint') }}</p>
-          <p class="text-xs text-muted-foreground">{{ t('metadata.editor.onlyPng') }}</p>
-          <input
-            ref="fileInput"
-            type="file"
-            accept="image/png"
-            class="hidden"
-            @change="handleFileSelect"
-          />
-        </div>
+          accept="image/png"
+          :multiple="false"
+          :label="t('metadata.editor.uploadHint')"
+          :sublabel="t('metadata.editor.onlyPng')"
+          @files="files => loadImage(files[0])"
+        />
 
         <!-- Editor Layout -->
         <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -226,9 +202,12 @@ const handleClearImage = () => {
             </div>
 
             <div class="flex items-center gap-2">
-              <Badge v-if="source" :variant="getSourceBadgeVariant(source)">
+              <span
+                v-if="source"
+                class="rounded-sm border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-2xs uppercase tracking-wide text-foreground/80"
+              >
                 {{ getSourceLabel(source) }}
-              </Badge>
+              </span>
               <Button size="sm" variant="outline" @click="handleClearImage">
                 <Upload class="w-4 h-4 mr-2" />
                 {{ t('metadata.editor.upload') }}
@@ -250,7 +229,7 @@ const handleClearImage = () => {
                 v-model="metadata.prompt"
                 :disabled="isUnsupported"
                 :rows="4"
-                class="resize-none"
+                class="resize-none font-mono text-xs"
               />
             </div>
 
@@ -260,7 +239,7 @@ const handleClearImage = () => {
                 v-model="metadata.negativePrompt"
                 :disabled="isUnsupported"
                 :rows="3"
-                class="resize-none"
+                class="resize-none font-mono text-xs"
               />
             </div>
 
@@ -288,7 +267,7 @@ const handleClearImage = () => {
                     v-model="char.prompt"
                     :disabled="isUnsupported"
                     :rows="2"
-                    class="resize-none text-xs"
+                    class="resize-none font-mono text-xs"
                   />
                 </div>
 
@@ -298,7 +277,7 @@ const handleClearImage = () => {
                     v-model="char.negative"
                     :disabled="isUnsupported"
                     :rows="2"
-                    class="resize-none text-xs"
+                    class="resize-none font-mono text-xs"
                   />
                 </div>
               </div>

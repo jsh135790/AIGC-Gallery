@@ -4,6 +4,7 @@ import { ref, computed } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import SectionLabel from '@/components/common/SectionLabel.vue'
 import { useI18n } from '@/composables/useI18n'
 import type { AIGCImage } from '@/types'
 
@@ -41,32 +42,25 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
 
 <template>
   <div class="space-y-4 text-sm">
-    <!-- Source badge -->
+    <!-- Source chip — neutral mono, single-accent discipline -->
     <div class="flex items-center gap-2">
       <span class="text-muted-foreground">{{ t('metadata.source') }}</span>
-      <Badge
-        variant="outline"
-        :class="{
-          'bg-blue-500/10 text-blue-500 border-blue-500/30': image.source === 'sd',
-          'bg-purple-500/10 text-purple-500 border-purple-500/30': image.source === 'nai',
-          'bg-green-500/10 text-green-500 border-green-500/30': image.source === 'comfyui',
-        }"
-      >
+      <span class="rounded-sm border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-2xs uppercase tracking-wide text-foreground/80">
         {{ image.source === 'sd' ? 'Stable Diffusion' : image.source === 'nai' ? 'NovelAI' : image.source === 'comfyui' ? 'ComfyUI' : image.source }}
-      </Badge>
+      </span>
     </div>
 
     <!-- Prompt -->
     <div v-if="image.prompt" class="space-y-1.5">
       <div class="flex items-center justify-between">
-        <span class="font-medium text-xs uppercase tracking-wider text-muted-foreground">{{ t('metadata.prompt') }}</span>
+        <SectionLabel>{{ t('metadata.prompt') }}</SectionLabel>
         <Button
           variant="ghost"
           size="icon"
           class="h-6 w-6"
           @click="copyText(image.prompt, 'prompt')"
         >
-          <Check v-if="copiedField === 'prompt'" class="h-3 w-3 text-green-500" />
+          <Check v-if="copiedField === 'prompt'" class="h-3 w-3 text-success" />
           <Copy v-else class="h-3 w-3" />
         </Button>
       </div>
@@ -78,14 +72,14 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
     <!-- Negative Prompt -->
     <div v-if="image.negativePrompt" class="space-y-1.5">
       <div class="flex items-center justify-between">
-        <span class="font-medium text-xs uppercase tracking-wider text-muted-foreground">{{ t('metadata.negativePrompt') }}</span>
+        <SectionLabel>{{ t('metadata.negativePrompt') }}</SectionLabel>
         <Button
           variant="ghost"
           size="icon"
           class="h-6 w-6"
           @click="copyText(image.negativePrompt, 'negative')"
         >
-          <Check v-if="copiedField === 'negative'" class="h-3 w-3 text-green-500" />
+          <Check v-if="copiedField === 'negative'" class="h-3 w-3 text-success" />
           <Copy v-else class="h-3 w-3" />
         </Button>
       </div>
@@ -98,10 +92,8 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
     <div v-if="image.v4Data && image.v4Data.characters.length" class="space-y-2">
       <div class="flex items-center gap-1.5">
         <Users class="h-3.5 w-3.5 text-muted-foreground" />
-        <span class="font-medium text-xs uppercase tracking-wider text-muted-foreground">
-          {{ t('metadata.characterPrompts') }}
-        </span>
-        <Badge variant="outline" class="text-[10px] px-1.5 py-0">
+        <SectionLabel>{{ t('metadata.characterPrompts') }}</SectionLabel>
+        <Badge variant="outline" class="text-2xs px-1.5 py-0">
           {{ t('metadata.characterCount', { count: String(image.v4Data.characters.length) }) }}
         </Badge>
       </div>
@@ -109,18 +101,18 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
       <!-- v4 Base Prompt (if different from main prompt) -->
       <div v-if="image.v4Data.basePrompt && image.v4Data.basePrompt !== image.prompt" class="space-y-1">
         <div class="flex items-center justify-between">
-          <span class="text-[11px] text-muted-foreground">{{ t('metadata.globalPrompt') }}</span>
+          <span class="text-2xs text-muted-foreground">{{ t('metadata.globalPrompt') }}</span>
           <Button
             variant="ghost"
             size="icon"
             class="h-5 w-5"
             @click="copyText(image.v4Data.basePrompt, 'v4base')"
           >
-            <Check v-if="copiedField === 'v4base'" class="h-2.5 w-2.5 text-green-500" />
+            <Check v-if="copiedField === 'v4base'" class="h-2.5 w-2.5 text-success" />
             <Copy v-else class="h-2.5 w-2.5" />
           </Button>
         </div>
-        <div class="rounded-md bg-muted/40 p-2 text-[11px] leading-relaxed max-h-20 overflow-y-auto font-mono">
+        <div class="rounded-md bg-muted/40 p-2 text-2xs leading-relaxed max-h-20 overflow-y-auto font-mono">
           {{ image.v4Data.basePrompt }}
         </div>
       </div>
@@ -133,7 +125,7 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
       >
         <div class="flex items-center justify-between">
           <span class="text-xs font-medium">{{ t('metadata.character', { idx: String(char.idx) }) }}</span>
-          <div v-if="char.centers.length" class="flex items-center gap-1 text-[10px] text-muted-foreground">
+          <div v-if="char.centers.length" class="flex items-center gap-1 text-2xs text-muted-foreground">
             <MapPin class="h-3 w-3" />
             <span v-if="isAutoPosition(char.centers)">{{ t('metadata.autoPosition') }}</span>
             <span
@@ -149,18 +141,18 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
         <!-- Character positive prompt -->
         <div v-if="char.prompt" class="space-y-0.5">
           <div class="flex items-center justify-between">
-            <span class="text-[10px] text-muted-foreground">Prompt</span>
+            <span class="text-2xs text-muted-foreground">Prompt</span>
             <Button
               variant="ghost"
               size="icon"
               class="h-5 w-5"
               @click="copyText(char.prompt, `char${char.idx}p`)"
             >
-              <Check v-if="copiedField === `char${char.idx}p`" class="h-2.5 w-2.5 text-green-500" />
+              <Check v-if="copiedField === `char${char.idx}p`" class="h-2.5 w-2.5 text-success" />
               <Copy v-else class="h-2.5 w-2.5" />
             </Button>
           </div>
-          <div class="rounded-md bg-background/60 p-2 text-[11px] leading-relaxed max-h-20 overflow-y-auto font-mono">
+          <div class="rounded-md bg-background/60 p-2 text-2xs leading-relaxed max-h-20 overflow-y-auto font-mono">
             {{ char.prompt }}
           </div>
         </div>
@@ -168,18 +160,18 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
         <!-- Character negative prompt -->
         <div v-if="char.negative" class="space-y-0.5">
           <div class="flex items-center justify-between">
-            <span class="text-[10px] text-muted-foreground">Negative</span>
+            <span class="text-2xs text-muted-foreground">Negative</span>
             <Button
               variant="ghost"
               size="icon"
               class="h-5 w-5"
               @click="copyText(char.negative, `char${char.idx}n`)"
             >
-              <Check v-if="copiedField === `char${char.idx}n`" class="h-2.5 w-2.5 text-green-500" />
+              <Check v-if="copiedField === `char${char.idx}n`" class="h-2.5 w-2.5 text-success" />
               <Copy v-else class="h-2.5 w-2.5" />
             </Button>
           </div>
-          <div class="rounded-md bg-background/60 p-2 text-[11px] leading-relaxed max-h-16 overflow-y-auto font-mono text-muted-foreground">
+          <div class="rounded-md bg-background/60 p-2 text-2xs leading-relaxed max-h-16 overflow-y-auto font-mono text-muted-foreground">
             {{ char.negative }}
           </div>
         </div>
@@ -187,20 +179,20 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
 
       <!-- v4 Meta flags -->
       <div class="flex flex-wrap gap-1.5">
-        <Badge v-if="image.v4Data.useOrder" variant="outline" class="text-[10px]">use_order</Badge>
-        <Badge v-if="image.v4Data.useCoords" variant="outline" class="text-[10px]">use_coords</Badge>
-        <Badge v-if="image.v4Data.legacyUc" variant="outline" class="text-[10px]">legacy_uc</Badge>
+        <Badge v-if="image.v4Data.useOrder" variant="outline" class="text-2xs">use_order</Badge>
+        <Badge v-if="image.v4Data.useCoords" variant="outline" class="text-2xs">use_coords</Badge>
+        <Badge v-if="image.v4Data.legacyUc" variant="outline" class="text-2xs">legacy_uc</Badge>
       </div>
     </div>
 
     <!-- Parameters -->
     <div v-if="paramEntries.length" class="space-y-1.5">
-      <span class="font-medium text-xs uppercase tracking-wider text-muted-foreground">{{ t('metadata.parameters') }}</span>
+      <SectionLabel>{{ t('metadata.parameters') }}</SectionLabel>
       <div class="rounded-lg bg-muted/50 p-3">
         <div class="grid grid-cols-2 gap-x-4 gap-y-2">
           <div v-for="[key, value] in paramEntries" :key="key" class="flex items-baseline justify-between gap-2">
             <span class="text-xs text-muted-foreground capitalize">{{ key }}</span>
-            <span class="text-xs font-mono font-medium truncate max-w-[120px]">{{ value }}</span>
+            <span class="text-xs font-mono font-medium tabular-nums truncate max-w-[120px]">{{ value }}</span>
           </div>
         </div>
       </div>
@@ -208,14 +200,14 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
 
     <!-- ComfyUI Node Types -->
     <div v-if="nodeTypes && nodeTypes.length" class="space-y-1.5">
-      <span class="font-medium text-xs uppercase tracking-wider text-muted-foreground">{{ t('metadata.nodeTypes') }}</span>
+      <SectionLabel>{{ t('metadata.nodeTypes') }}</SectionLabel>
       <div class="rounded-lg bg-muted/50 p-3 max-h-40 overflow-y-auto">
         <div class="flex flex-wrap gap-1.5">
           <Badge
             v-for="nodeType in nodeTypes"
             :key="nodeType"
             variant="outline"
-            class="text-[10px] font-mono"
+            class="text-2xs font-mono"
           >
             {{ nodeType }}
           </Badge>
@@ -227,7 +219,7 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
 
     <!-- File info -->
     <div class="space-y-1.5">
-      <span class="font-medium text-xs uppercase tracking-wider text-muted-foreground">{{ t('metadata.fileInfo') }}</span>
+      <SectionLabel>{{ t('metadata.fileInfo') }}</SectionLabel>
       <div class="grid grid-cols-2 gap-2 text-xs">
         <div>
           <span class="text-muted-foreground">{{ t('metadata.filename') }}</span>
