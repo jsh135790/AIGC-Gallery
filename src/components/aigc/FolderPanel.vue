@@ -131,7 +131,7 @@ function getFolderName(item: FolderNavItem): string {
                 <DropdownMenuTrigger as-child>
                   <button
                     type="button"
-                    class="flex h-5 w-5 cursor-pointer items-center justify-center rounded hover:bg-foreground/10 transition-colors"
+                    class="flex h-5 w-5 cursor-pointer items-center justify-center rounded hover:bg-accent transition-colors"
                     :aria-label="t('common.more')"
                   >
                     <MoreHorizontal class="h-3.5 w-3.5" />
@@ -169,7 +169,7 @@ function getFolderName(item: FolderNavItem): string {
 
     <!-- New/Edit Folder Dialog -->
     <Dialog :open="newFolderOpen" @update:open="newFolderOpen = $event">
-      <DialogContent class="max-w-sm w-[calc(100vw-2rem)] glass-heavy">
+      <DialogContent class="max-w-sm w-[calc(100vw-2rem)]">
         <DialogHeader>
           <DialogTitle>{{ editingFolderId ? t('folder.editFolder') : t('folder.newFolder') }}</DialogTitle>
           <DialogDescription>{{ t('folder.createDescription') }}</DialogDescription>

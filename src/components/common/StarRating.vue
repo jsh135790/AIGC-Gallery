@@ -38,7 +38,7 @@ function setRating(value: number) {
       <Star
         :class="cn(
           size === 'sm' ? 'h-3 w-3' : 'h-4 w-4',
-          i <= modelValue ? 'text-primary fill-primary' : 'text-muted-foreground/30',
+          i <= modelValue ? 'text-primary fill-primary' : 'text-dim',
         )"
       />
     </component>

@@ -31,7 +31,7 @@ const emit = defineEmits<{
     <span class="max-w-[120px] truncate">{{ tag }}</span>
     <button
       v-if="removable"
-      class="ml-0.5 rounded-full p-0.5 hover:bg-foreground/10 transition-colors"
+      class="ml-0.5 rounded-full p-0.5 hover:bg-accent transition-colors"
       @click.stop="emit('remove', tag)"
     >
       <X class="h-3 w-3" />

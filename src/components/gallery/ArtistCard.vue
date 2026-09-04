@@ -77,11 +77,11 @@ async function copyPrompt() {
 
 <template>
   <div
-    class="group relative cursor-pointer overflow-hidden rounded-lg border border-border/60 bg-card transition-colors hover:border-primary/40"
+    class="panel group relative cursor-pointer overflow-hidden rounded-lg transition-colors hover:border-primary/28"
     @click="emit('view', artist)"
   >
     <!-- Image -->
-    <div class="relative aspect-[3/4] overflow-hidden bg-muted/30">
+    <div class="grid-paper relative aspect-[3/4] overflow-hidden bg-muted">
       <img
         v-if="thumbnailUrl"
         :src="thumbnailUrl"
@@ -89,7 +89,7 @@ async function copyPrompt() {
         class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         loading="lazy"
       />
-      <div v-else class="flex h-full items-center justify-center text-muted-foreground/40">
+      <div v-else class="flex h-full items-center justify-center text-dim">
         <Eye class="h-10 w-10" />
       </div>
 
@@ -100,7 +100,7 @@ async function copyPrompt() {
       <Button
         variant="ghost"
         size="icon"
-        class="absolute top-2 right-2 h-7 w-7 cursor-pointer rounded-full bg-black/50 text-white hover:bg-black/60 transition-all"
+        class="absolute top-2 right-2 h-7 w-7 cursor-pointer rounded-full bg-background/80 text-foreground backdrop-blur-sm hover:bg-background transition-all"
         :class="artist.isFavorite ? 'text-primary' : 'opacity-0 group-hover:opacity-100'"
         :aria-label="t('common.favorites')"
         @click.stop="emit('toggleFavorite', artist.id!)"
@@ -112,7 +112,7 @@ async function copyPrompt() {
       <Badge
         v-if="artist.category"
         variant="secondary"
-        class="absolute top-2 left-2 bg-black/55 text-white border-none text-2xs"
+        class="absolute top-2 left-2 bg-background/85 text-foreground backdrop-blur-sm text-2xs"
       >
         {{ translatedCategory }}
       </Badge>
@@ -133,10 +133,10 @@ async function copyPrompt() {
         <Tooltip>
           <TooltipTrigger as-child>
             <button
-              class="flex w-full items-center gap-1.5 rounded-md bg-muted/50 px-2 py-1.5 font-mono text-2xs text-muted-foreground hover:bg-muted transition-colors group/prompt"
+              class="flex w-full items-center gap-1.5 rounded-md bg-muted px-2 py-1.5 font-mono text-2xs text-muted-foreground hover:bg-accent transition-colors group/prompt"
               @click.stop="copyPrompt"
             >
-              <Copy class="h-3 w-3 shrink-0 opacity-50 group-hover/prompt:opacity-100" />
+              <Copy class="h-3 w-3 shrink-0 text-dim group-hover/prompt:text-foreground" />
               <span class="truncate">{{ artist.prompt }}</span>
             </button>
           </TooltipTrigger>

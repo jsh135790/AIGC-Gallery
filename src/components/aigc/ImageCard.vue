@@ -55,13 +55,13 @@ const aspectStyle = computed(() => {
   <div
     class="group relative overflow-hidden rounded-lg border bg-card transition-colors cursor-pointer"
     :class="selected
-      ? 'border-primary ring-1 ring-primary'
-      : 'border-border/60 hover:border-primary/40'"
+      ? 'hair-amber'
+      : 'hover:border-primary/28'"
     @click="emit('click', image)"
   >
     <!-- Thumbnail -->
     <div
-      class="relative overflow-hidden bg-muted/30"
+      class="grid-paper relative overflow-hidden bg-muted"
       :class="aspectStyle ? '' : 'aspect-square'"
       :style="aspectStyle"
     >
@@ -73,7 +73,7 @@ const aspectStyle = computed(() => {
         loading="lazy"
       />
       <div v-else class="flex h-full items-center justify-center">
-        <div class="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground/20 border-t-muted-foreground" />
+        <div class="h-6 w-6 animate-spin rounded-full border-2 border-[var(--hair-soft)] border-t-primary" />
       </div>
 
       <!-- Hover overlay with info -->
@@ -81,7 +81,7 @@ const aspectStyle = computed(() => {
 
       <!-- Source chip — neutral mono, single-accent discipline -->
       <span
-        class="absolute top-2 left-2 rounded-sm border border-border/50 bg-background/85 px-1.5 py-0 font-mono text-2xs uppercase text-foreground/80"
+        class="absolute top-2 left-2 rounded-sm border bg-background/85 text-foreground backdrop-blur-sm px-1.5 py-0 font-mono text-2xs uppercase"
       >
         {{ sourceLabel[image.source] || '?' }}
       </span>
@@ -99,7 +99,7 @@ const aspectStyle = computed(() => {
         v-else
         variant="ghost"
         size="icon"
-        class="absolute top-2 right-2 h-7 w-7 cursor-pointer rounded-full bg-black/50 text-white hover:bg-black/60"
+        class="absolute top-2 right-2 h-7 w-7 cursor-pointer rounded-full bg-background/80 text-foreground backdrop-blur-sm hover:bg-background"
         :class="image.isFavorite ? 'text-primary' : 'opacity-0 group-hover:opacity-100'"
         @click.stop="emit('toggleFavorite', image.id!)"
       >

@@ -14,10 +14,10 @@ withDefaults(defineProps<{
   <div
     :class="cn(
       'flex flex-col items-center justify-center gap-3 px-6 py-16 text-center',
-      variant === 'dashed' && 'rounded-lg border border-dashed border-border bg-grid',
+      variant === 'dashed' && 'rounded-lg border border-dashed grid-paper',
     )"
   >
-    <div v-if="$slots.icon" class="text-muted-foreground/50 [&_svg]:h-10 [&_svg]:w-10 [&_svg]:stroke-[1.25]">
+    <div v-if="$slots.icon" class="text-dim [&_svg]:h-10 [&_svg]:w-10 [&_svg]:stroke-[1.25]">
       <slot name="icon" />
     </div>
     <div class="space-y-1">

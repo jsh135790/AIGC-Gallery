@@ -55,7 +55,7 @@ function clear() {
     <Input
       v-model="localValue"
       :placeholder="effectivePlaceholder"
-      class="pl-9 pr-8 bg-muted/50 border-border/50 focus:bg-background transition-colors"
+      class="pl-9 pr-8 bg-muted focus:bg-background transition-colors"
       @update:model-value="onInput"
     />
     <Button

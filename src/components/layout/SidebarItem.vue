@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { cn } from '@/lib/utils'
+import SteppedNumber from '@/components/common/SteppedNumber.vue'
 
 withDefaults(defineProps<{
   active?: boolean
@@ -43,12 +44,13 @@ const emit = defineEmits<{
       <span v-if="description" class="block truncate text-xs text-muted-foreground">{{ description }}</span>
     </span>
 
-    <!-- 计数 -->
-    <span
+    <!-- 计数:步进跳变而非平滑补间 -->
+    <SteppedNumber
       v-if="count !== undefined"
-      class="shrink-0 font-mono text-2xs tabular-nums"
-      :class="active ? 'text-primary/70' : 'text-muted-foreground/70'"
-    >{{ count }}</span>
+      :value="count"
+      class="shrink-0 font-mono text-2xs"
+      :class="active ? 'text-primary' : 'text-dim'"
+    />
 
     <!-- 尾部操作(⋯ 菜单等,悬停显现) -->
     <span

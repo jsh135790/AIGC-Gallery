@@ -16,7 +16,7 @@ const emit = defineEmits<{
       v-for="color in SWATCH_COLORS"
       :key="color"
       type="button"
-      class="h-6 w-6 rounded-full transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+      class="h-6 w-6 rounded-full transition-transform hover:scale-110"
       :class="modelValue === color ? 'ring-2 ring-primary ring-offset-2 ring-offset-background scale-110' : ''"
       :style="{ backgroundColor: color }"
       :aria-pressed="modelValue === color"

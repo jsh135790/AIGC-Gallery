@@ -8,7 +8,8 @@ const props = defineProps<{
 </script>
 
 <template>
-  <p :class="cn('font-mono text-2xs font-medium uppercase tracking-wider text-muted-foreground', props.class)">
+  <!-- .micro = 10px / .14em 字距 / 大写 / text-dim,定义在 index.css 的 @layer components -->
+  <p :class="cn('micro', props.class)">
     <slot />
   </p>
 </template>

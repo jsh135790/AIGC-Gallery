@@ -23,6 +23,8 @@ const delegatedProps = reactiveOmit(props, "class")
            && 'h-2.5 flex-col border-t border-t-transparent p-px',
          props.class)"
   >
-    <ScrollAreaThumb class="relative flex-1 rounded-full bg-border" />
+    <!-- 与 index.css 里原生 ::-webkit-scrollbar-thumb 同色同尺寸:
+         同一个面板里两套滚动条可能并存,颜色必须一致 -->
+    <ScrollAreaThumb class="relative flex-1 rounded-full bg-input transition-colors hover:bg-dim" />
   </ScrollAreaScrollbar>
 </template>

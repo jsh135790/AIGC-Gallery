@@ -141,6 +141,7 @@ function handleEditMetadata() {
 
   setEditingImage({
     id: String(props.image.id),
+    filename: props.image.filename,
     blob: props.image.imageData,
     metadata: imageMetadata,
     source: props.image.source,
@@ -172,7 +173,7 @@ function handleEditMetadata() {
       <button
         ref="previewTrigger"
         type="button"
-        class="group relative block w-full cursor-pointer overflow-hidden rounded-lg border border-border/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        class="group relative block w-full cursor-pointer overflow-hidden rounded-lg border"
         :aria-label="t('lightbox.open')"
         @click="lightboxOpen = true"
       >
@@ -182,7 +183,7 @@ function handleEditMetadata() {
           class="w-full object-contain max-h-64 transition-transform duration-300 group-hover:scale-[1.02]"
         />
         <div class="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
-          <Maximize2 class="h-6 w-6 text-white opacity-0 group-hover:opacity-70 transition-opacity" />
+          <Maximize2 class="h-6 w-6 text-white opacity-0 transition-opacity group-hover:opacity-100" />
         </div>
       </button>
 

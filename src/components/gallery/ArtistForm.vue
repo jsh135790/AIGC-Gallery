@@ -271,10 +271,10 @@ function onOpenChange(v: boolean) {
           :sublabel="t('artist.sampleImageHint')"
         />
         <div v-if="imagePreviews.length" class="pt-2">
-          <div class="group relative aspect-3/4 max-w-[200px] overflow-hidden rounded-lg border border-border/50">
+          <div class="group relative aspect-3/4 max-w-[200px] overflow-hidden rounded-lg border">
             <img :src="imagePreviews[0]" class="h-full w-full object-cover" />
             <button
-              class="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+              class="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-background/80 text-foreground backdrop-blur-sm hover:bg-background opacity-0 transition-opacity group-hover:opacity-100"
               @click="removeImage(0)"
             >
               <X class="h-3.5 w-3.5" />

@@ -116,7 +116,7 @@ function copyPrompt(_prompt: string) {
         class="w-full max-w-xs"
       />
       <Select v-model="store.selectedCategory">
-        <SelectTrigger class="h-9 w-[120px] shrink-0 bg-muted/50 cursor-pointer">
+        <SelectTrigger class="h-9 w-[120px] shrink-0 bg-muted cursor-pointer">
           <SelectValue :placeholder="t('artist.allCategories')" />
         </SelectTrigger>
         <SelectContent>
@@ -137,7 +137,7 @@ function copyPrompt(_prompt: string) {
         variant="outline"
         size="sm"
         class="gap-1.5 h-8 cursor-pointer"
-        :class="store.showFavoritesOnly && 'bg-primary/10 border-primary/30 text-primary'"
+        :class="store.showFavoritesOnly && 'hair-amber bg-primary/10 text-primary'"
         :aria-label="t('common.favorites')"
         @click="store.showFavoritesOnly = !store.showFavoritesOnly"
       >

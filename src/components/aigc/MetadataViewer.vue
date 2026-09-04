@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import SectionLabel from '@/components/common/SectionLabel.vue'
+import MetadataRow from '@/components/common/MetadataRow.vue'
 import { useI18n } from '@/composables/useI18n'
 import type { AIGCImage } from '@/types'
 
@@ -45,7 +46,7 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
     <!-- Source chip — neutral mono, single-accent discipline -->
     <div class="flex items-center gap-2">
       <span class="text-muted-foreground">{{ t('metadata.source') }}</span>
-      <span class="rounded-sm border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-2xs uppercase tracking-wide text-foreground/80">
+      <span class="hair rounded-sm px-1.5 py-0.5 font-mono text-2xs uppercase tracking-wide text-muted-foreground">
         {{ image.source === 'sd' ? 'Stable Diffusion' : image.source === 'nai' ? 'NovelAI' : image.source === 'comfyui' ? 'ComfyUI' : image.source }}
       </span>
     </div>
@@ -64,7 +65,7 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
           <Copy v-else class="h-3 w-3" />
         </Button>
       </div>
-      <div class="rounded-lg bg-muted/50 p-3 text-xs leading-relaxed max-h-32 overflow-y-auto font-mono">
+      <div class="border bg-background rounded-lg p-3 text-xs leading-relaxed max-h-32 overflow-y-auto font-mono">
         {{ image.prompt }}
       </div>
     </div>
@@ -83,7 +84,7 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
           <Copy v-else class="h-3 w-3" />
         </Button>
       </div>
-      <div class="rounded-lg bg-muted/50 p-3 text-xs leading-relaxed max-h-24 overflow-y-auto font-mono text-muted-foreground">
+      <div class="border bg-background rounded-lg p-3 text-xs leading-relaxed max-h-24 overflow-y-auto font-mono text-muted-foreground">
         {{ image.negativePrompt }}
       </div>
     </div>
@@ -112,7 +113,7 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
             <Copy v-else class="h-2.5 w-2.5" />
           </Button>
         </div>
-        <div class="rounded-md bg-muted/40 p-2 text-2xs leading-relaxed max-h-20 overflow-y-auto font-mono">
+        <div class="border bg-background rounded-md p-2 text-2xs leading-relaxed max-h-20 overflow-y-auto font-mono">
           {{ image.v4Data.basePrompt }}
         </div>
       </div>
@@ -121,7 +122,7 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
       <div
         v-for="char in image.v4Data.characters"
         :key="char.idx"
-        class="rounded-lg border border-border/40 bg-muted/20 p-2.5 space-y-1.5"
+        class="rounded-lg border p-2.5 space-y-1.5"
       >
         <div class="flex items-center justify-between">
           <span class="text-xs font-medium">{{ t('metadata.character', { idx: String(char.idx) }) }}</span>
@@ -152,7 +153,7 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
               <Copy v-else class="h-2.5 w-2.5" />
             </Button>
           </div>
-          <div class="rounded-md bg-background/60 p-2 text-2xs leading-relaxed max-h-20 overflow-y-auto font-mono">
+          <div class="border bg-background rounded-md p-2 text-2xs leading-relaxed max-h-20 overflow-y-auto font-mono">
             {{ char.prompt }}
           </div>
         </div>
@@ -171,7 +172,7 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
               <Copy v-else class="h-2.5 w-2.5" />
             </Button>
           </div>
-          <div class="rounded-md bg-background/60 p-2 text-2xs leading-relaxed max-h-16 overflow-y-auto font-mono text-muted-foreground">
+          <div class="border bg-background rounded-md p-2 text-2xs leading-relaxed max-h-16 overflow-y-auto font-mono text-muted-foreground">
             {{ char.negative }}
           </div>
         </div>
@@ -188,12 +189,16 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
     <!-- Parameters -->
     <div v-if="paramEntries.length" class="space-y-1.5">
       <SectionLabel>{{ t('metadata.parameters') }}</SectionLabel>
-      <div class="rounded-lg bg-muted/50 p-3">
+      <div class="border bg-background rounded-lg p-3">
         <div class="grid grid-cols-2 gap-x-4 gap-y-2">
-          <div v-for="[key, value] in paramEntries" :key="key" class="flex items-baseline justify-between gap-2">
-            <span class="text-xs text-muted-foreground capitalize">{{ key }}</span>
-            <span class="text-xs font-mono font-medium tabular-nums truncate max-w-[120px]">{{ value }}</span>
-          </div>
+          <!-- 打字机读出:逐行错开 70ms,琥珀光标。reduced-motion 下直接出完整文本 -->
+          <MetadataRow
+            v-for="([key, value], i) in paramEntries"
+            :key="key"
+            :label="key"
+            :value="value"
+            :index="i"
+          />
         </div>
       </div>
     </div>
@@ -201,7 +206,7 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
     <!-- ComfyUI Node Types -->
     <div v-if="nodeTypes && nodeTypes.length" class="space-y-1.5">
       <SectionLabel>{{ t('metadata.nodeTypes') }}</SectionLabel>
-      <div class="rounded-lg bg-muted/50 p-3 max-h-40 overflow-y-auto">
+      <div class="border bg-background rounded-lg p-3 max-h-40 overflow-y-auto">
         <div class="flex flex-wrap gap-1.5">
           <Badge
             v-for="nodeType in nodeTypes"

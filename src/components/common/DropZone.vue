@@ -10,9 +10,12 @@ const props = withDefaults(defineProps<{
   multiple?: boolean
   label?: string
   sublabel?: string
+  /** 解析中:掠一道琥珀扫描线(PNG 元数据读取的可见反馈) */
+  scanning?: boolean
 }>(), {
   accept: 'image/png,image/jpeg,image/webp',
   multiple: true,
+  scanning: false,
 })
 
 // Use i18n defaults if not provided
@@ -58,17 +61,24 @@ function handleFileChange(e: Event) {
 
 <template>
   <div
-    class="relative flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-8 transition-all duration-300 cursor-pointer select-none"
+    class="relative flex flex-col items-center justify-center gap-3 overflow-hidden rounded-xl border-2 border-dashed p-8 transition-all duration-300 cursor-pointer select-none"
     :class="[
       isDragOver
-        ? 'border-primary bg-primary/5 scale-[1.01] shadow-lg shadow-primary/10'
-        : 'border-border/60 hover:border-primary/40 hover:bg-muted/30',
+        ? 'border-primary bg-primary/10 scale-[1.01]'
+        : 'hover:border-primary/28 hover:bg-accent',
     ]"
     @dragover="handleDragOver"
     @dragleave="handleDragLeave"
     @drop="handleDrop"
     @click="handleClick"
   >
+    <!-- 扫描线:1.6s 一趟,reduced-motion 下由 index.css 显式停掉 -->
+    <div
+      v-if="scanning"
+      class="scan-sweep pointer-events-none absolute inset-x-0 top-0 h-16 bg-linear-to-b from-transparent via-primary/25 to-transparent"
+      aria-hidden="true"
+    />
+
     <div
       class="flex h-12 w-12 items-center justify-center rounded-full transition-colors"
       :class="isDragOver ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'"

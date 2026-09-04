@@ -3,7 +3,6 @@ import type { HTMLAttributes } from 'vue'
 import { X } from 'lucide-vue-next'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
-import { useBlurEffect } from '@/composables/useBlurEffect'
 import { useI18n } from '@/composables/useI18n'
 
 withDefaults(defineProps<{
@@ -20,20 +19,21 @@ const emit = defineEmits<{
   'update:open': [value: boolean]
 }>()
 
-const { blurEnabled } = useBlurEffect()
 const { t } = useI18n()
 </script>
 
 <template>
   <Sheet :open="open" @update:open="v => emit('update:open', v)">
+    <!-- 底色/模糊/遮罩全部由 sheetVariants 的 .glass-surface + SheetContent 默认遮罩提供,
+         关掉模糊时 --glass-alpha 自动翻成 1,这里不需要再写 blurEnabled 三元。
+         border-l 由 sheetVariants 给,这里不重复。 -->
     <SheetContent
       side="right"
-      overlay-class="bg-black/60"
-      class="flex w-full flex-col border-l border-border"
-      :class="[widthClass, blurEnabled ? 'bg-background/95 backdrop-blur-xl' : 'bg-background']"
+      class="flex w-full flex-col"
+      :class="widthClass"
     >
       <!-- Header -->
-      <div class="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-4">
+      <div class="flex h-14 shrink-0 items-center justify-between gap-2 border-b px-4">
         <SheetTitle class="truncate text-sm font-semibold text-foreground">{{ title }}</SheetTitle>
         <div class="flex shrink-0 items-center gap-1">
           <slot name="header-actions" />
@@ -55,7 +55,7 @@ const { t } = useI18n()
       </div>
 
       <!-- Footer -->
-      <div v-if="$slots.footer" class="shrink-0 border-t border-border px-4 py-3">
+      <div v-if="$slots.footer" class="shrink-0 border-t px-4 py-3">
         <slot name="footer" />
       </div>
     </SheetContent>

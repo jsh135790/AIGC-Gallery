@@ -27,7 +27,7 @@ const { t } = useI18n()
         <span class="sr-only">{{ t('theme.toggle') }}</span>
       </Button>
     </DropdownMenuTrigger>
-    <DropdownMenuContent align="end" class="glass-heavy">
+    <DropdownMenuContent align="end">
       <DropdownMenuItem @click="themeStore.setTheme('light')" class="cursor-pointer gap-2">
         <Check class="h-4 w-4" :class="themeStore.theme === 'light' ? 'opacity-100' : 'opacity-0'" />
         <Sun class="h-4 w-4" />

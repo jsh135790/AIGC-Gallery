@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Switch } from '@/components/ui/switch'
+import SectionLabel from '@/components/common/SectionLabel.vue'
 import ThemeToggle from './ThemeToggle.vue'
 import LanguageToggle from './LanguageToggle.vue'
 import { useI18n } from '@/composables/useI18n'
@@ -34,10 +35,10 @@ const navItems = computed(() => [
   { path: '/toolbox', label: t('nav.toolbox'), icon: Wrench },
 ])
 
-// 主题色预设:默认(null)以琥珀 #f5a623 作为展示色点
+// 主题色预设:默认(null)以琥珀 #ffb000 作为展示色点(= --primary 深色值,与主页同源)
 const accentPresets = ACCENT_PRESETS.map(p => ({
   ...p,
-  swatch: p.hex ?? '#f5a623',
+  swatch: p.hex ?? '#ffb000',
 }))
 
 function isActiveAccent(hex: string | null) {
@@ -47,7 +48,7 @@ function isActiveAccent(hex: string | null) {
 
 <template>
   <header
-    class="sticky top-0 z-50 w-full border-b border-border/60 bg-background/95"
+    class="glass-surface sticky top-0 z-50 w-full border-b"
   >
     <div class="flex h-[var(--header-height)] items-center px-4 md:px-6">
       <!-- Logo -->
@@ -56,7 +57,8 @@ function isActiveAccent(hex: string | null) {
         @click="router.push('/')"
       >
         <Aperture class="h-5 w-5 text-primary" />
-        <span class="hidden font-mono text-sm font-medium uppercase tracking-[0.2em] sm:inline-block">AIGC Gallery</span>
+        <!-- .display = Big Shoulders 压缩体大写。纯拉丁串才安全(line-height .86 会裁中文) -->
+        <span class="display hidden text-[19px] sm:inline-block">AIGC Gallery</span>
       </button>
 
       <!-- Navigation:琥珀下划线式选中态 -->
@@ -124,7 +126,7 @@ function isActiveAccent(hex: string | null) {
 
   <!-- About Dialog -->
   <Dialog :open="aboutOpen" @update:open="v => { aboutOpen = v; if (!v) aboutTab = 'settings' }">
-    <DialogContent class="max-w-md w-[calc(100vw-2rem)] glass-heavy">
+    <DialogContent class="max-w-md w-[calc(100vw-2rem)]">
       <DialogHeader>
         <DialogTitle class="text-lg">{{ t('about.title') }}</DialogTitle>
         <DialogDescription>{{ t('about.description') }}</DialogDescription>
@@ -146,9 +148,9 @@ function isActiveAccent(hex: string | null) {
         <TabsContent value="settings" class="mt-3 space-y-4">
           <!-- Global Settings -->
           <div class="space-y-1.5">
-            <p class="font-mono text-2xs font-medium uppercase tracking-wider text-muted-foreground px-1">{{ t('settings.global') }}</p>
+            <SectionLabel class="px-1">{{ t('settings.global') }}</SectionLabel>
             <button
-              class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-xs sm:text-sm transition-colors hover:bg-muted/50"
+              class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-xs sm:text-sm transition-colors hover:bg-accent"
               @click="toggleBlur"
             >
               <div class="flex items-center gap-2">
@@ -169,7 +171,7 @@ function isActiveAccent(hex: string | null) {
                   v-for="preset in accentPresets"
                   :key="preset.name"
                   type="button"
-                  class="h-6 w-6 rounded-full transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+                  class="h-6 w-6 rounded-full transition-transform hover:scale-110"
                   :class="isActiveAccent(preset.hex) ? 'ring-2 ring-primary ring-offset-2 ring-offset-background scale-110' : ''"
                   :style="{ backgroundColor: preset.swatch }"
                   :aria-label="preset.name"
@@ -182,11 +184,11 @@ function isActiveAccent(hex: string | null) {
 
           <!-- Artist Gallery Settings -->
           <div class="space-y-1.5">
-            <p class="font-mono text-2xs font-medium uppercase tracking-wider text-muted-foreground px-1">{{ t('settings.artistGallery') }}</p>
+            <SectionLabel class="px-1">{{ t('settings.artistGallery') }}</SectionLabel>
 
             <!-- Auto-fill filename -->
             <button
-              class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-xs sm:text-sm transition-colors hover:bg-muted/50"
+              class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-xs sm:text-sm transition-colors hover:bg-accent"
               @click="toggleAutoFillName"
             >
               <div class="flex items-center gap-2">
@@ -197,18 +199,21 @@ function isActiveAccent(hex: string | null) {
             </button>
 
             <!-- Auto-fill artist prefix -->
+            <!-- 禁用态只在按钮这一层压一次:此前外层 opacity-40 里又套了一个
+                 disabled:opacity-50 的 Switch,实际渲染 0.20,比旁边的行明显更淡 -->
             <button
               class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-xs sm:text-sm transition-colors"
-              :class="canTogglePrefix ? 'hover:bg-muted/50' : 'opacity-40 cursor-not-allowed'"
+              :class="canTogglePrefix ? 'hover:bg-accent' : 'opacity-45 cursor-not-allowed'"
+              :disabled="!canTogglePrefix"
               @click="toggleAutoFillPrefix"
             >
               <div class="flex items-center gap-2">
                 <PenTool class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
                 <span>{{ t('settings.autoFillPrefix') }}</span>
               </div>
-              <Switch :model-value="autoFillPrefix" :disabled="!canTogglePrefix" class="pointer-events-none" tabindex="-1" />
+              <Switch :model-value="autoFillPrefix" class="pointer-events-none" tabindex="-1" />
             </button>
-            <p v-if="!canTogglePrefix" class="text-2xs text-muted-foreground/60 px-3">{{ t('settings.autoFillPrefixHint') }}</p>
+            <p v-if="!canTogglePrefix" class="text-2xs text-dim px-3">{{ t('settings.autoFillPrefixHint') }}</p>
 
             <!-- Custom prefix input -->
             <div class="px-3 pt-1">
@@ -217,7 +222,7 @@ function isActiveAccent(hex: string | null) {
                 v-model="customPrefix"
                 :disabled="!canEditPrefix"
                 type="text"
-                class="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-mono transition-colors focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-40 disabled:cursor-not-allowed"
+                class="w-full rounded-md border bg-background px-2.5 py-1.5 text-xs font-mono transition-colors disabled:opacity-45 disabled:cursor-not-allowed"
                 placeholder="artist:"
               />
             </div>
@@ -230,7 +235,7 @@ function isActiveAccent(hex: string | null) {
           <img
             src="https://files.catbox.moe/ca2r4f.png"
             alt="Pilot1337"
-            class="h-16 w-16 sm:h-20 sm:w-20 rounded-full border-2 border-border/60 object-cover"
+            class="h-16 w-16 sm:h-20 sm:w-20 rounded-full border-2 object-cover"
           />
 
           <!-- Info -->
@@ -248,7 +253,7 @@ function isActiveAccent(hex: string | null) {
           </div>
 
           <!-- QQ Group -->
-          <div class="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm">
+          <div class="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm">
             <MessageCircle class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
             <span class="text-muted-foreground">{{ t('about.feedbackGroup') }}</span>
             <span class="font-mono font-medium">1046260326</span>

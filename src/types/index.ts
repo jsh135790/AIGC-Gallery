@@ -135,6 +135,11 @@ export interface ParsedMetadata {
   parameters: ImageParameters
   rawText: string
   v4Data?: NAIv4Data
+  /**
+   * 元数据来自 alpha 通道隐写(NovelAI Stealth PNG)而非标准 tEXt。
+   * 写回只会写标准 chunk,隐藏的那一份不会同步 —— 编辑器据此给警告。
+   */
+  stealth?: boolean
 }
 
 export interface PngChunk {

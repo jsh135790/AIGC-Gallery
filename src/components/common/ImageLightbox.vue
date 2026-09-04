@@ -10,7 +10,6 @@ import {
   DialogTitle,
 } from 'reka-ui'
 import { Button } from '@/components/ui/button'
-import { useBlurEffect } from '@/composables/useBlurEffect'
 import { useI18n } from '@/composables/useI18n'
 
 const props = defineProps<{
@@ -24,7 +23,8 @@ const emit = defineEmits<{
   'update:open': [value: boolean]
 }>()
 
-const { blurEnabled } = useBlurEffect()
+/* 灯箱是黑底看图环境,控件恒为白色(与主题无关,同图片渐变一样属于既定例外) */
+const chromeButton = 'h-9 w-9 text-white/70 hover:bg-white/10 hover:text-white'
 const { t } = useI18n()
 const scale = ref(1)
 const imgLoaded = ref(false)
@@ -185,8 +185,7 @@ onUnmounted(() => {
   <DialogRoot :open="open" @update:open="handleOpenChange">
     <DialogPortal>
       <DialogOverlay
-        class="fixed inset-0 z-[100]"
-        :class="blurEnabled ? 'bg-black/70 backdrop-blur-sm' : 'bg-black/85'"
+        class="glass-blur fixed inset-0 z-[100] bg-black/80"
       />
       <DialogContent
         class="fixed inset-0 z-[101] flex items-center justify-center overflow-hidden outline-none"
@@ -201,20 +200,20 @@ onUnmounted(() => {
           <Button
             variant="ghost"
             size="icon"
-            class="h-9 w-9 text-white/80 hover:bg-white/10 hover:text-white"
+            :class="chromeButton"
             :aria-label="t('lightbox.zoomOut')"
             :disabled="scale <= 0.25"
             @click="zoomOut"
           >
             <ZoomOut class="h-4 w-4" />
           </Button>
-          <span class="min-w-[3rem] text-center font-mono text-2xs tabular-nums text-white/60">
+          <span class="min-w-[3rem] text-center font-mono text-2xs tabular-nums text-white/70">
             {{ Math.round(scale * 100) }}%
           </span>
           <Button
             variant="ghost"
             size="icon"
-            class="h-9 w-9 text-white/80 hover:bg-white/10 hover:text-white"
+            :class="chromeButton"
             :aria-label="t('lightbox.zoomIn')"
             :disabled="scale >= 3"
             @click="zoomIn"
@@ -224,7 +223,7 @@ onUnmounted(() => {
           <Button
             variant="ghost"
             size="icon"
-            class="h-9 w-9 text-white/80 hover:bg-white/10 hover:text-white"
+            :class="chromeButton"
             :aria-label="t('lightbox.download')"
             @click="download"
           >
@@ -233,7 +232,7 @@ onUnmounted(() => {
           <Button
             variant="ghost"
             size="icon"
-            class="h-9 w-9 text-white/80 hover:bg-white/10 hover:text-white"
+            :class="chromeButton"
             :aria-label="t('lightbox.close')"
             @click="close"
           >
@@ -256,7 +255,7 @@ onUnmounted(() => {
               @load="handleImageLoad"
             />
             <div v-if="!imgLoaded" class="absolute inset-0 flex items-center justify-center">
-              <div class="h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-white motion-reduce:animate-none" />
+              <div class="h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-primary motion-reduce:animate-none" />
             </div>
           </div>
         </div>

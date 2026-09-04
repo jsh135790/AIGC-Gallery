@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import SearchBar from '@/components/common/SearchBar.vue'
 import DropZone from '@/components/common/DropZone.vue'
+import SteppedNumber from '@/components/common/SteppedNumber.vue'
 import AppShell from '@/components/layout/AppShell.vue'
 import FolderPanel from '@/components/aigc/FolderPanel.vue'
 import ImageCard from '@/components/aigc/ImageCard.vue'
@@ -225,10 +226,10 @@ const currentFolderLabel = computed(() => {
 
     <template #toolbar-end>
       <!-- View mode toggle (grid / masonry) -->
-      <div class="flex h-8 items-center rounded-md border border-border p-0.5">
+      <div class="hair flex h-8 items-center rounded-md p-0.5">
         <button
           class="flex h-6 w-7 items-center justify-center rounded-sm transition-colors"
-          :class="store.viewMode === 'grid' ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground'"
+          :class="store.viewMode === 'grid' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'"
           :aria-label="t('aigc.viewGrid')"
           :title="t('aigc.viewGrid')"
           @click="store.viewMode = 'grid'"
@@ -237,7 +238,7 @@ const currentFolderLabel = computed(() => {
         </button>
         <button
           class="flex h-6 w-7 items-center justify-center rounded-sm transition-colors"
-          :class="store.viewMode === 'masonry' ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground'"
+          :class="store.viewMode === 'masonry' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'"
           :aria-label="t('aigc.viewMasonry')"
           :title="t('aigc.viewMasonry')"
           @click="store.viewMode = 'masonry'"
@@ -251,7 +252,7 @@ const currentFolderLabel = computed(() => {
         variant="outline"
         size="sm"
         class="gap-1.5 h-8"
-        :class="selectMode && 'bg-primary/10 border-primary/30 text-primary'"
+        :class="selectMode && 'hair-amber bg-primary/10 text-primary'"
         @click="selectMode ? exitSelectMode() : (selectMode = true)"
       >
         <CheckSquare class="h-3.5 w-3.5" />
@@ -294,13 +295,15 @@ const currentFolderLabel = computed(() => {
       <!-- Upload progress -->
       <div v-if="isUploading" class="px-4 pb-2">
         <div class="flex items-center gap-2 text-xs text-muted-foreground">
-          <div class="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+          <!-- 解析中的琥珀状态灯:steps(8) 跳变而非平滑呼吸 -->
+          <span class="pulse-amber h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true" />
+          <div class="flex-1 h-1.5 rounded-full bg-[var(--hair-soft)] overflow-hidden">
             <div
               class="h-full rounded-full bg-primary transition-all duration-300"
               :style="{ width: uploadProgress + '%' }"
             />
           </div>
-          <span class="font-mono text-2xs tabular-nums">{{ uploadProgress }}%</span>
+          <SteppedNumber :value="uploadProgress" class="font-mono text-2xs" /><span class="font-mono text-2xs">%</span>
         </div>
       </div>
 
@@ -331,7 +334,7 @@ const currentFolderLabel = computed(() => {
 
       <!-- Empty state: show drop zone -->
       <div v-else-if="store.filteredImages.length === 0 && !store.searchQuery" class="max-w-lg mx-auto mt-8">
-        <DropZone @files="handleUpload" />
+        <DropZone :scanning="isUploading" @files="handleUpload" />
         <p class="mt-4 text-center text-sm text-muted-foreground">
           {{ t('aigc.uploadHint') }}
         </p>
@@ -353,6 +356,7 @@ const currentFolderLabel = computed(() => {
         <!-- Drop zone banner when images exist -->
         <DropZone
           class="mb-4"
+          :scanning="isUploading"
           @files="handleUpload"
           :label="t('aigc.continueUpload')"
           :sublabel="t('aigc.continueUploadHint')"

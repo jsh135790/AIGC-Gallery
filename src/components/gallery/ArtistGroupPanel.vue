@@ -126,7 +126,7 @@ async function confirmDelete() {
               <DropdownMenuTrigger as-child>
                 <button
                   type="button"
-                  class="flex h-5 w-5 cursor-pointer items-center justify-center rounded hover:bg-foreground/10 transition-colors"
+                  class="flex h-5 w-5 cursor-pointer items-center justify-center rounded hover:bg-accent transition-colors"
                   :aria-label="t('common.more')"
                 >
                   <MoreHorizontal class="h-3.5 w-3.5" />
@@ -175,7 +175,7 @@ async function confirmDelete() {
 
     <!-- New / edit dialog -->
     <Dialog :open="dialogOpen" @update:open="dialogOpen = $event">
-      <DialogContent class="max-w-sm w-[calc(100vw-2rem)] glass-heavy">
+      <DialogContent class="max-w-sm w-[calc(100vw-2rem)]">
         <DialogHeader>
           <DialogTitle>
             {{ editingPageId != null ? t('artistPage.editPage') : t('artistPage.newPage') }}
@@ -204,7 +204,7 @@ async function confirmDelete() {
 
     <!-- Delete confirm dialog -->
     <Dialog :open="deleteConfirmOpen" @update:open="deleteConfirmOpen = $event">
-      <DialogContent class="max-w-sm w-[calc(100vw-2rem)] glass-heavy">
+      <DialogContent class="max-w-sm w-[calc(100vw-2rem)]">
         <DialogHeader>
           <DialogTitle>{{ t('artistPage.deletePage') }}</DialogTitle>
           <DialogDescription>

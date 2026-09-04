@@ -1,16 +1,32 @@
 /*
  * ============================================================================
- * AIGC Gallery — "专业暗房 Darkroom" 设计令牌
+ * AIGC Gallery — "暗色精密仪器 Dark Precision Instrument" 设计令牌
  * ============================================================================
  *
+ * 与个人主页 PilotGarage(D:\Github Repo\nightmare-pages)同一套视觉语言:
+ * 同一条 ink 冷调近黑阶梯、同一个安全灯琥珀 #ffb000、同样的双线发丝描边、
+ * 同样的 40px 坐标纸、同样的 steps() 步进动效。深色是权威版本;浅色由它推导
+ * (主页没有浅色),共用 214–220° 的冷色相家族,所以两个主题读作同一个产品。
+ *
  * 层级规约(边框优先于阴影):
- *   用 1px 发丝线(--border)+ 一级底色抬升(--card/--popover)区分层级;
+ *   1px 发丝线(--hair-soft 外框 + --hair-hard 内描边)+ 一级底色抬升区分层级;
  *   box-shadow 只留给真正的浮层(dropdown/dialog/lightbox),卡片悬停不加阴影。
  *
  * 单一强调色纪律:
- *   琥珀(--primary,暗房安全灯)承担全部"选中/聚焦/进度/主操作/收藏/星级";
+ *   琥珀(--primary)承担全部"选中/聚焦/进度/主操作/收藏/星级";
  *   --accent 保持中性灰,只作 ghost/outline 的 hover 底纹。
  *   语义色仅 --success / --warning / --info / --destructive 四个。
+ *
+ * 透明度阶梯(唯一基准,不要在组件里另开档位):
+ *   .015/.035  坐标纸网格          → var(--grid-line)
+ *   .05/.06/.10 发丝线              → var(--hair-soft) / var(--hair-hard)
+ *   .10        选中面               → hsl(var(--primary) / 0.10)
+ *   .12/.28    强调内描边 / 强调边框 → .hair-amber
+ *   .25        扫描渐变              → hsl(var(--primary) / 0.25)
+ *   .70        强调轨迹 / 进度细线    → hsl(var(--primary) / 0.70)
+ *   .80/.85    玻璃与遮罩            → var(--glass-alpha) / 图说底衬
+ *   其余一律走**不透明令牌**:hover 用 bg-accent,暗文字用 text-dim,
+ *   禁用统一 opacity-45。用 alpha 表达层级必然在某个主题下坏掉。
  *
  * z-index 阶梯:
  *   30  页内 sticky(toolbar 等)
@@ -22,31 +38,46 @@
  */
 
 @import "tailwindcss";
+/*
+ * tw-animate-css:把 shadcn 组件用的 animate-in / fade-in-0 / zoom-in-95 /
+ * slide-in-from-* 注册为真正的 Tailwind @utility。此前这些只有手写的裸类,
+ * Tailwind 无法生成 data-[state=open]: 前缀形式,于是 Dialog / Sheet /
+ * DropdownMenu / Select 的开合动画整体失效(只有 Tooltip 裸用所以能动)。
+ * 它同时提供 accordion / collapsible 的 --reka-* 版本。
+ */
+@import "tw-animate-css";
 
 /*
- * IBM Plex Mono(数据字体:prompt / 参数 / 计数 / 徽章)
- * woff2 来源:@fontsource/ibm-plex-mono@5.x 的
- * files/ibm-plex-mono-latin-{400,500}-normal.woff2,已 vendored 进
- * src/assets/fonts/(只取 woff2 + latin 子集,避免 singlefile 把 woff
- * 双份 base64 内联)。升级字体时从该包重新拷贝即可。
+ * 字体:与个人主页 PilotGarage 同源。
+ *   Geist Mono Variable          — 全站正文(等宽即仪器感)
+ *   Big Shoulders Display Var.   — 压缩体大写显示字(.display,仅拉丁)
+ *
+ * woff2 来源:@fontsource-variable/{geist-mono,big-shoulders-display} 的
+ * files/*-latin-wght-normal.woff2,已 vendored 进 src/assets/fonts/。
+ * 只取 latin 可变子集:vite-plugin-singlefile 会把字体 base64 内联进
+ * dist/index.html,多拉一个子集就是几十 KB 的净增(预算 <900KB)。
+ * 升级字体时从该包重新拷贝同名文件即可,不要 import 整个包。
+ *
+ * 中文有意不配字形,回落系统黑体(PingFang SC / HarmonyOS Sans SC / 雅黑),
+ * 与主页行为一致。
  */
 @font-face {
-  font-family: 'IBM Plex Mono';
+  font-family: 'Geist Mono Variable';
   font-style: normal;
-  font-weight: 400;
+  font-weight: 100 900;
   font-display: swap;
-  src: url('./fonts/ibm-plex-mono-latin-400-normal.woff2') format('woff2');
+  src: url('./fonts/geist-mono-latin-wght-normal.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
     U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
     U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 @font-face {
-  font-family: 'IBM Plex Mono';
+  font-family: 'Big Shoulders Display Variable';
   font-style: normal;
-  font-weight: 500;
+  font-weight: 100 900;
   font-display: swap;
-  src: url('./fonts/ibm-plex-mono-latin-500-normal.woff2') format('woff2');
+  src: url('./fonts/big-shoulders-display-latin-wght-normal.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
     U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
     U+2212, U+2215, U+FEFF, U+FFFD;
@@ -67,6 +98,7 @@
   --color-secondary-foreground: hsl(var(--secondary-foreground));
   --color-muted: hsl(var(--muted));
   --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-dim: hsl(var(--dim));
   --color-accent: hsl(var(--accent));
   --color-accent-foreground: hsl(var(--accent-foreground));
   --color-destructive: hsl(var(--destructive));
@@ -83,8 +115,16 @@
   --color-sidebar-accent: hsl(var(--sidebar-accent));
   --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
 
-  --font-sans: system-ui, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  /*
+   * 字体栈:与主页同源。--font-mono 是全站正文(body 直接吃它),
+   * --font-display 只给 .display 用(压缩体大写标题,无中文字形)。
+   * --font-sans 只作个别需要比例宽度的兜底,不再是默认。
+   */
+  --font-sans: system-ui, "Segoe UI", "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", "Cascadia Mono", Consolas,
+    "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", monospace;
+  --font-display: "Big Shoulders Display Variable", "PingFang SC", "HarmonyOS Sans SC",
+    "Microsoft YaHei", sans-serif;
 
   /* 命名微字号,吸收散落的 text-[10px]/[11px] */
   --text-2xs: 0.6875rem;
@@ -94,130 +134,261 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-
-  --animate-accordion-down: accordion-down 0.2s ease-out;
-  --animate-accordion-up: accordion-up 0.2s ease-out;
-  --animate-collapsible-down: collapsible-down 0.2s ease-out;
-  --animate-collapsible-up: collapsible-up 0.2s ease-out;
-
-  @keyframes accordion-down {
-    from { height: 0; }
-    to { height: var(--reka-accordion-content-height); }
-  }
-  @keyframes accordion-up {
-    from { height: var(--reka-accordion-content-height); }
-    to { height: 0; }
-  }
-  @keyframes collapsible-down {
-    from { height: 0; }
-    to { height: var(--reka-collapsible-content-height); }
-  }
-  @keyframes collapsible-up {
-    from { height: var(--reka-collapsible-content-height); }
-    to { height: 0; }
-  }
 }
 
-/* ---- 浅色主题「印相室」:暖白纸感 + amber-700 强调(保证纸上 AA 可读) ---- */
+/* ---- 浅色主题「印相室」:冷白纸 + 黄铜琥珀(色相 41° 与深色同源,压亮度保 AA) ---- */
 :root {
-  --background: 40 20% 97%;
-  --foreground: 240 8% 12%;
-  --card: 40 20% 99%;
-  --card-foreground: 240 8% 12%;
-  --popover: 40 20% 99%;
-  --popover-foreground: 240 8% 12%;
-  --primary: 28 90% 37%;
-  --primary-foreground: 40 30% 97%;
-  --secondary: 40 10% 92%;
-  --secondary-foreground: 240 8% 20%;
-  --muted: 40 10% 92%;
-  --muted-foreground: 240 5% 42%;
-  --accent: 40 10% 90%;
-  --accent-foreground: 240 8% 12%;
+  --background: 216 20% 97%;
+  --foreground: 216 20% 12%;
+  --card: 216 24% 99%;
+  --card-foreground: 216 20% 12%;
+  --popover: 216 24% 99%;
+  --popover-foreground: 216 20% 12%;
+  --primary: 41 96% 29%;
+  --primary-foreground: 43 20% 97%;
+  --secondary: 216 16% 93%;
+  --secondary-foreground: 216 18% 20%;
+  --muted: 216 16% 93%;
+  --muted-foreground: 216 10% 40%;
+  --dim: 216 10% 55%;
+  --accent: 216 16% 90%;
+  --accent-foreground: 216 20% 12%;
   --destructive: 0 72% 42%;
   --destructive-foreground: 0 0% 98%;
   --success: 152 60% 30%;
-  --warning: 40 95% 36%;
+  --warning: 32 80% 34%;
   --info: 210 85% 40%;
-  --border: 40 8% 86%;
-  --input: 40 8% 84%;
-  --ring: 28 90% 37%;
+  --border: 216 14% 84%;
+  --input: 216 14% 80%;
+  --ring: 41 96% 29%;
   --radius: 0.5rem;
-  --sidebar: 40 15% 95.5%;
-  --sidebar-foreground: 240 6% 30%;
-  --sidebar-border: 40 8% 88%;
-  --sidebar-accent: 40 10% 90%;
-  --sidebar-accent-foreground: 240 8% 12%;
+  --sidebar: 216 18% 95%;
+  --sidebar-foreground: 216 10% 40%;
+  --sidebar-border: 216 14% 84%;
+  --sidebar-accent: 216 16% 90%;
+  --sidebar-accent-foreground: 216 20% 12%;
+
+  /*
+   * 发丝线。浅色下强弱顺序相对深色「反转」:纸面上外描边要实才立得住,
+   * 内描边若比外框还重,双线会读成一条脏重影。所以浅色「外实内虚」,
+   * 深色「外虚内实」(内描边是白色高光,把面板从死黑里抬起来)。
+   */
+  --hair-soft: rgb(0 0 0 / 0.10);
+  --hair-hard: rgb(0 0 0 / 0.05);
+  /* 纸面亮度余量大,同样绝对 alpha 在白底上几乎看不见,故比深色高一档 */
+  --grid-line: rgb(0 0 0 / 0.035);
+  /* 浮层落影(唯一一处 box-shadow 的合法用途) */
+  --shadow-float: 0 12px 32px -12px rgb(0 0 0 / 0.18);
 
   /* 布局常量(普通 CSS 变量,供 h-[var(--header-height)] 等消费) */
   --header-height: 3.5rem;
 
-  /* 动效时序:微交互 120ms / 标准 200ms / 大位移 300ms */
+  /* 动效时序:微交互 120ms / 标准 200ms / 大位移 300ms(= 主页 --ease-expo) */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* ---- 深色主题「石墨暗房」(默认):近黑石墨 + 安全灯琥珀 #F5A623 ---- */
+/* ---- 深色主题「石墨暗房」(默认):主页 ink 阶梯 + 安全灯琥珀 #ffb000 ---- */
 .dark {
-  --background: 240 6% 4.5%;
-  --foreground: 40 8% 92%;
-  --card: 240 5% 6.5%;
-  --card-foreground: 40 8% 92%;
-  --popover: 240 5% 8%;
-  --popover-foreground: 40 8% 92%;
-  --primary: 38 92% 55%;
-  --primary-foreground: 30 15% 8%;
-  --secondary: 240 4% 11%;
-  --secondary-foreground: 40 8% 88%;
-  --muted: 240 4% 12%;
-  --muted-foreground: 240 5% 58%;
-  --accent: 240 4% 14%;
-  --accent-foreground: 40 8% 92%;
+  --background: 220 18% 3.5%;          /* ink-900 #07080a */
+  --foreground: 43 13% 90%;            /* fg-100  #e8e6e1 */
+  --card: 214 18% 7.5%;                /* ink-700 #101317 */
+  --card-foreground: 43 13% 90%;
+  --popover: 216 18% 11%;              /* ink-600 #171b21 — 浮层站最高一级 */
+  --popover-foreground: 43 13% 90%;
+  --primary: 41 100% 50%;              /* amber-500 #ffb000 */
+  --primary-foreground: 220 18% 3.5%;  /* ink-900,与主页 ::selection 一致 */
+  --secondary: 216 18% 11%;            /* ink-600 */
+  --secondary-foreground: 43 13% 90%;
+  --muted: 216 18% 11%;                /* ink-600 */
+  --muted-foreground: 219 6% 57%;      /* fg-300  #8a8f98 */
+  --dim: 219 9% 32%;                   /* fg-500  #4a4f58 */
+  --accent: 216 18% 13.5%;             /* 中性 hover 底纹,刻意不带琥珀 */
+  --accent-foreground: 43 13% 90%;
   --destructive: 0 70% 45%;
   --destructive-foreground: 0 0% 98%;
   --success: 152 55% 45%;
-  --warning: 45 90% 52%;
+  --warning: 32 70% 52%;               /* 推离琥珀:原 45° 距 41° 仅 4°,会读成"强调色坏了" */
   --info: 210 85% 62%;
-  --border: 240 4% 14%;
-  --input: 240 4% 16%;
-  --ring: 38 92% 55%;
-  --sidebar: 240 6% 5.5%;
-  --sidebar-foreground: 240 5% 70%;
-  --sidebar-border: 240 4% 12%;
-  --sidebar-accent: 240 4% 12%;
-  --sidebar-accent-foreground: 40 8% 92%;
+  --border: 216 14% 16%;               /* 不透明兜底 ≈ hair-soft 叠在 card 上 */
+  --input: 216 14% 18%;
+  --ring: 41 100% 50%;                 /* = primary */
+  --sidebar: 216 19% 5.5%;             /* ink-800 #0b0d10 */
+  --sidebar-foreground: 219 6% 57%;    /* fg-300 */
+  --sidebar-border: 216 14% 16%;       /* = border,不再单独一档 */
+  --sidebar-accent: 216 18% 13.5%;     /* = accent */
+  --sidebar-accent-foreground: 43 13% 90%;
+
+  --hair-soft: rgb(255 255 255 / 0.06);
+  --hair-hard: rgb(255 255 255 / 0.10);
+  --grid-line: rgb(255 255 255 / 0.015);
+  --shadow-float: 0 16px 40px -12px rgb(0 0 0 / 0.55);
 }
 
-* {
-  border-color: hsl(var(--border));
+/*
+ * 必须在 @layer base 内。层外的普通声明优先级高于任何层内声明(与选择器权重
+ * 无关),而 Tailwind v4 把工具类全部发射进 @layer utilities —— 这条 reset 曾
+ * 写在层外,把全站的 border-primary / border-border/60 / border-input /
+ * border-t-* 统统压平成 --border,于是琥珀悬停边、徽章透明边、加载转圈的缺口
+ * 全部失效。
+ */
+@layer base {
+  /*
+   * 默认边框色 = 发丝线。收敛掉审计里 border-border / border-border/40 /
+   * /50 / /60 四种混用 —— 组件只写 `border` 不写颜色即可拿到统一发丝线。
+   */
+  * {
+    border-color: var(--hair-soft);
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-mono);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'zero' 1;   /* 斜杠零 —— 这是台仪器 */
+  }
+
+  /* 一条规则取代散落在 7 个组件里的五套 ring 配方 */
+  :focus-visible {
+    outline: 1px solid hsl(var(--ring));
+    outline-offset: 3px;
+  }
+
+  /*
+   * tabindex="-1" 的元素按定义不可能被键盘 Tab 到,它的焦点一律是脚本给的
+   * ——Reka 的 FocusScope 一打开就 focus() 对话框 / 侧面板容器本身。
+   * 上面那条规则的 outline-offset: 3px 会在容器**外侧** 3px 画一圈强调色;
+   * 侧面板贴着视口右边缘,上/右/下三段都在屏幕外,只剩左边那一段可见,
+   * 就成了一条"比面板左边再往左一点"的琥珀线。
+   * 它时有时无,是因为浏览器对脚本聚焦是否算 :focus-visible 的判定要看用户
+   * 最后一次交互:刚敲过键盘就画,用鼠标点开就不画。
+   * 键盘到不了的元素不需要焦点指示,所以这里直接关掉。
+   */
+  [tabindex="-1"]:focus-visible {
+    outline: none;
+  }
 }
 
-body {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
-  font-family: system-ui, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+/*
+ * 签名细节:双线描边(外框定义边界 + 内描边高光把面板抬起来)。
+ * box-shadow inset 跟随 border-radius,所以在 --radius: 0.5rem 的圆角盒上同样成立。
+ *
+ * 必须在 @layer components 内:层内声明才会输给 @layer utilities 的工具类,
+ * 否则同时带 .panel 和 border-primary 的元素会让工具类失效 —— 就是上面刚修掉的坑。
+ */
+@layer components {
+  .hair {
+    border: 1px solid var(--hair-soft);
+    box-shadow: inset 0 0 0 1px var(--hair-hard);
+  }
+
+  /* 跟随 --primary,于是自动适配主题色选择器和浅色的黄铜琥珀 */
+  .hair-amber {
+    border: 1px solid hsl(var(--primary) / 0.28);
+    box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.12);
+  }
+
+  .panel {
+    background-color: hsl(var(--card));
+    border: 1px solid var(--hair-soft);
+    box-shadow: inset 0 0 0 1px var(--hair-hard);
+  }
+
+  /* 40px 坐标纸。按区块贴,不做全屏覆盖 */
+  .grid-paper {
+    background-image:
+      linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* 压缩体大写显示字。line-height .86 会裁切中日韩字形 —— 只用于纯拉丁串 */
+  .display {
+    font-family: var(--font-display);
+    font-weight: 700;
+    line-height: 0.86;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+  }
+
+  /* 微标签。取代 text-muted-foreground 的 /70 /60 /50 /40 /30 五档 */
+  .micro {
+    font-size: 10px;
+    line-height: 1.4;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: hsl(var(--dim));
+  }
+
+  /* 数值读出:等宽数字 + 斜杠零 */
+  .readout {
+    font-variant-numeric: tabular-nums slashed-zero;
+  }
 }
 
-/* 极淡胶片颗粒(暗房氛围)。若干扰缩略图观感,删除此块即可 */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 999;
-  pointer-events: none;
-  opacity: 0.022;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+/*
+ * 玻璃面:一条配方,四个入口。
+ *
+ * --glass-alpha 在 .no-blur 下翻成 1,于是**实底回退自动发生**,组件里不再需要
+ * `blurEnabled ? 'bg-x/80 backdrop-blur-xl' : 'bg-x'` 这种三元 —— 此前六个玻璃面
+ * 各写一套配比(/60+blur-lg、/95+blur-xl、/70+blur-sm、/10+blur-lg),而 Toast
+ * 那一处根本忘了写回退,关掉模糊就变成 10% alpha 的透明板。
+ *
+ * 挑 tint 的规则:浮层用 --popover,页头/工具栏用 --background,侧栏用 --sidebar,
+ * 自带底色的(Toast 语义色、灯箱黑幕)只要 .glass-blur。
+ */
+:root {
+  --glass-alpha: 0.8;
 }
 
-/* 重玻璃面(blurEnabled 关闭时的实底回退在组件内处理) */
-.glass-heavy {
-  background: hsl(var(--card) / 0.96);
-  border: 1px solid hsl(var(--border) / 0.4);
+.no-blur {
+  --glass-alpha: 1;
 }
 
-/* Scrollbar styling */
+@layer components {
+  .glass-panel,
+  .glass-surface,
+  .glass-sidebar,
+  .glass-blur {
+    backdrop-filter: blur(24px);
+  }
+
+  .glass-panel   { background-color: hsl(var(--popover) / var(--glass-alpha)); }
+  .glass-surface { background-color: hsl(var(--background) / var(--glass-alpha)); }
+  .glass-sidebar { background-color: hsl(var(--sidebar) / var(--glass-alpha)); }
+
+  /*
+   * 浮层面(Dialog / DropdownMenu / Select / Tooltip / Sheet 的 Content)。
+   * 一条类给全:玻璃底 + 模糊 + 双线描边 + 落影。
+   *
+   * 落影必须和内描边写在**同一条 box-shadow** 里 —— 否则 Tailwind 的 shadow-lg
+   * (utilities 层)会整条覆盖掉 .hair 的 inset 高光,双线只剩外框。
+   */
+  .panel-float {
+    background-color: hsl(var(--popover) / var(--glass-alpha));
+    backdrop-filter: blur(24px);
+    border: 1px solid var(--hair-soft);
+    box-shadow:
+      inset 0 0 0 1px var(--hair-hard),
+      var(--shadow-float);
+  }
+
+  .no-blur .glass-panel,
+  .no-blur .glass-surface,
+  .no-blur .glass-sidebar,
+  .no-blur .glass-blur,
+  .no-blur .panel-float {
+    backdrop-filter: none;
+  }
+}
+
+/* 滚动条:与主页同规格(10px + 胶囊 + 2px 内缩)。
+   内缩用 transparent border + padding-box 而不是写死地面色,
+   因为滚动条也出现在面板/侧栏/对话框里,那里的地面不是 --background。 */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
@@ -225,12 +396,14 @@ body::before {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.3);
-  border-radius: 3px;
+  background-color: hsl(var(--input));
+  background-clip: padding-box;
+  border: 2px solid transparent;
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.5);
+  background-color: hsl(var(--dim));
 }
 
 /* Transition utilities */
@@ -292,153 +465,13 @@ body::before {
   transform: translateY(-10px);
 }
 
-/* Animate in utilities */
-.animate-in {
-  animation-duration: 200ms;
-  animation-timing-function: var(--ease-out-expo);
-  animation-fill-mode: both;
-}
-
-.animate-out {
-  animation-duration: 200ms;
-  animation-timing-function: var(--ease-out-expo);
-  animation-fill-mode: both;
-}
-
 /* 首屏网格交错入场:配合 :style="{'--stagger-i': index}",延迟封顶 250ms */
 .stagger-item {
   animation: slideInFromBottom 300ms var(--ease-out-expo) both;
   animation-delay: min(calc(var(--stagger-i, 0) * 25ms), 250ms);
 }
 
-.fade-in-0 {
-  animation-name: fadeIn;
-}
-
-.fade-out-0 {
-  animation-name: fadeOut;
-}
-
-.slide-in-from-right {
-  animation-name: slideInFromRight;
-}
-
-.slide-out-to-right {
-  animation-name: slideOutToRight;
-}
-
-.slide-in-from-left {
-  animation-name: slideInFromLeft;
-}
-
-.slide-out-to-left {
-  animation-name: slideOutToLeft;
-}
-
-.slide-in-from-top {
-  animation-name: slideInFromTop;
-}
-
-.slide-out-to-top {
-  animation-name: slideOutToTop;
-}
-
-.slide-in-from-bottom {
-  animation-name: slideInFromBottom;
-}
-
-.slide-out-to-bottom {
-  animation-name: slideOutToBottom;
-}
-
-.slide-in-from-bottom-2 {
-  animation-name: slideInFromBottom;
-}
-
-.duration-200 {
-  animation-duration: 200ms;
-}
-
-.duration-300 {
-  animation-duration: 300ms;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes fadeOut {
-  from { opacity: 1; }
-  to { opacity: 0; }
-}
-
-@keyframes slideInFromRight {
-  from {
-    opacity: 0;
-    transform: translateX(100%);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes slideOutToRight {
-  from {
-    opacity: 1;
-    transform: translateX(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateX(100%);
-  }
-}
-
-@keyframes slideInFromLeft {
-  from {
-    opacity: 0;
-    transform: translateX(-100%);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes slideOutToLeft {
-  from {
-    opacity: 1;
-    transform: translateX(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateX(-100%);
-  }
-}
-
-@keyframes slideInFromTop {
-  from {
-    opacity: 0;
-    transform: translateY(-100%);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideOutToTop {
-  from {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-100%);
-  }
-}
-
+/* .stagger-item 唯一在用的关键帧;其余开合动画已交给 tw-animate-css */
 @keyframes slideInFromBottom {
   from {
     opacity: 0;
@@ -450,29 +483,39 @@ body::before {
   }
 }
 
-@keyframes slideOutToBottom {
-  from {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(100%);
-  }
+/*
+ * 步进动效。刻意用 steps() 而不是连续插值:仪器的指示灯是跳变的,不是渐变的。
+ * 走独立 keyframes,不经 tw-animate-css 那套(它自己的 caret-blink 是
+ * 1.25s ease-out 的连续淡出,所以这里的名字必须错开,否则同名覆盖)。
+ */
+@keyframes caret-blink-step {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
 }
 
-/* Subtle background grid pattern */
-.bg-grid {
-  background-image:
-    linear-gradient(hsl(var(--border) / 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(var(--border) / 0.05) 1px, transparent 1px);
-  background-size: 40px 40px;
+@keyframes amber-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
 }
 
-/* Selection styles — 安全灯琥珀 */
+@keyframes scan-sweep {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(1000%); }
+}
+
+@layer components {
+  /* 打字机光标 */
+  .caret { animation: caret-blink-step 1.06s steps(1) infinite; }
+  /* 解析中的状态圆点 */
+  .pulse-amber { animation: amber-pulse 2s steps(8) infinite; }
+  /* PNG 解析中掠过缩略图的扫描线 */
+  .scan-sweep { animation: scan-sweep 1.6s var(--ease-out-expo) infinite; }
+}
+
+/* Selection styles — 实心安全灯琥珀,与主页一致 */
 ::selection {
-  background: hsl(var(--primary) / 0.25);
-  color: hsl(var(--foreground));
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
 }
 
 /* Honor user's reduced-motion preference globally */
@@ -484,5 +527,16 @@ body::before {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /*
+   * 上面的 0.01ms 会把无限循环压成"瞬间跑完一次"而不是停下,对常驻动画
+   * (闪烁光标 / 呼吸圆点 / 扫描线)等于留一个跳一下的残影。显式关掉。
+   * 打字机本身在 composable 里另有分支:reduced-motion 下直接渲染完整文本。
+   */
+  .caret,
+  .pulse-amber,
+  .scan-sweep {
+    animation: none !important;
   }
 }

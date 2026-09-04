@@ -42,7 +42,8 @@ async function parsePngMetadata(file: File, imageSrc?: string): Promise<ParsedMe
     if (imageSrc) {
       const stealthData = await extractStealthPng(imageSrc)
       if (stealthData) {
-        return parseNovelAIStealth(stealthData)
+        // 标记出来:写回只写标准 chunk,alpha 里那份不会同步,编辑器要给警告
+        return { ...parseNovelAIStealth(stealthData), stealth: true }
       }
     }
     return unknownResult()
