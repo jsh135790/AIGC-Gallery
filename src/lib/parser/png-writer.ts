@@ -2,6 +2,7 @@ import extract from 'png-chunks-extract'
 import encode from 'png-chunks-encode'
 import type { ParsedMetadata, ImageSource } from '@/types'
 import { splitSDParams, sdFieldForKey, SD_FIELD_TO_KEY, findSDParamLineIndex } from './sd-parser'
+import { TRACE_KEYWORD } from './trace'
 
 /*
  * 写回的原则是**外科手术式替换**,不是"按已知字段重新拼一份"。
@@ -15,8 +16,8 @@ import { splitSDParams, sdFieldForKey, SD_FIELD_TO_KEY, findSDParamLineIndex } f
  * 原始键拼写逐项搬运,只替换用户真的改过的键;不认识的键原样留在原位置。
  */
 
-/** 编辑痕迹 chunk 的 keyword。PNG 规范:1–79 字符 Latin-1、首尾无空格 */
-const TRACE_KEYWORD = 'aigc-gallery'
+/** 编辑痕迹 chunk 的 keyword。读侧也要认它,所以常量放在 ./trace 共用 */
+export { TRACE_KEYWORD } from './trace'
 
 /** 只给 UI 看的派生字段,不属于图片元数据,不写进文件 */
 const DERIVED_FIELDS = new Set(['nodeCount', 'nodeTypes'])

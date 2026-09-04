@@ -1,5 +1,6 @@
 import pako from 'pako'
-import type { ParsedMetadata, ImageParameters, PngTextChunk, NAIv4Data, NAICharacterPrompt, NAICharacterCenter } from '@/types'
+import type { ParsedMetadata, ImageParameters, PngTextChunk, NAIv4Data, NAICharacterPrompt, NAICharacterCenter, ParseReport } from '@/types'
+import { TRACE_KEYWORD } from './trace'
 
 // ===== NovelAI v4 Character Prompt Helpers =====
 
@@ -85,11 +86,27 @@ function parseNAIv4(commentJson: Record<string, unknown>): NAIv4Data | null {
 }
 
 /**
+ * Comment JSON 里已有专门归宿的键 —— 归一化后不能再原样透传一份,
+ * 否则 UI 上会出现 `cfgScale` 与 `scale` 并列这种自相矛盾的展示。
+ */
+const NAI_CONSUMED_KEYS = new Set([
+  'prompt',              // → 顶层 prompt(Description chunk 优先)
+  'uc',                  // → negativePrompt
+  'steps', 'sampler', 'scale', 'seed',
+  'width', 'height',     // → size
+  'model', 'source',     // → model
+  'v4_prompt', 'v4_negative_prompt', // → v4Data
+])
+
+/**
  * Parse NovelAI format metadata from PNG text chunks.
  * NovelAI stores: Description (prompt) and Comment (JSON with uc, steps, etc.)
  * Supports v4 multi-character prompts via v4_prompt / v4_negative_prompt fields.
+ *
+ * 已知键归一化,**其余键一律原样透传**进 parameters。展示层已经在遍历 parameters,
+ * 所以这一条就是"NAI 加了新字段时 UI 自动跟上"的落点 —— 之前卡在只放 11 个键进去。
  */
-export function parseNovelAI(chunks: PngTextChunk[]): ParsedMetadata {
+export function parseNovelAI(chunks: PngTextChunk[], report?: ParseReport): ParsedMetadata {
   let prompt = ''
   let negativePrompt = ''
   const parameters: ImageParameters = {}
@@ -97,6 +114,9 @@ export function parseNovelAI(chunks: PngTextChunk[]): ParsedMetadata {
   let v4Data: NAIv4Data | undefined
 
   for (const chunk of chunks) {
+    // 本 app 自己的编辑痕迹不是图片元数据
+    if (chunk.keyword === TRACE_KEYWORD) continue
+
     if (chunk.keyword === 'Description') {
       prompt = chunk.text.trim()
     } else if (chunk.keyword === 'Comment') {
@@ -111,28 +131,37 @@ export function parseNovelAI(chunks: PngTextChunk[]): ParsedMetadata {
         const h = json.height as number | undefined
         parameters.size = w && h ? `${w}x${h}` : undefined
         parameters.model = (json.model || json.source) as string | undefined
-        if (json.noise_schedule) parameters['noise_schedule'] = json.noise_schedule
-        if (json.sm !== undefined) parameters['sm'] = json.sm
-        if (json.sm_dyn !== undefined) parameters['sm_dyn'] = json.sm_dyn
-        if (json.cfg_rescale !== undefined) parameters['cfg_rescale'] = json.cfg_rescale
 
         // Parse v4 character prompt data
         const v4 = parseNAIv4(json)
         if (v4) v4Data = v4
 
-        // Store remaining fields that are not already extracted for raw display
+        // 白名单之外的键全部透传。模型/工具改字段名时不需要动代码
+        for (const [key, value] of Object.entries(json)) {
+          if (NAI_CONSUMED_KEYS.has(key)) continue
+          parameters[key] = value
+        }
+
         rawText = chunk.text
       } catch {
+        // Comment 不是合法 JSON —— 原文留在 rawText,写侧会据此判断能不能 replay
+        report?.unconsumedKeys.push('Comment')
         rawText = chunk.text
       }
-    } else if (chunk.keyword === 'Source' || chunk.keyword === 'Generation time') {
-      // Store additional NovelAI metadata
-      parameters[chunk.keyword.toLowerCase().replace(/\s+/g, '_')] = chunk.text
+    } else {
+      /*
+       * 其余独立 chunk 一律收下(Source / Generation time / Title / Software /
+       * 任何将来新增的)。旧实现只认前两个,Title 与 Software 被整条丢弃。
+       */
+      parameters[normalizeChunkKeyword(chunk.keyword)] = chunk.text
     }
   }
 
   if (!rawText) {
-    rawText = chunks.map(c => `${c.keyword}: ${c.text}`).join('\n')
+    rawText = chunks
+      .filter(c => c.keyword !== TRACE_KEYWORD)
+      .map(c => `${c.keyword}: ${c.text}`)
+      .join('\n')
   }
 
   return {
@@ -145,15 +174,20 @@ export function parseNovelAI(chunks: PngTextChunk[]): ParsedMetadata {
   }
 }
 
+/** `Generation time` → `generation_time`,与写侧的 NAI_CHUNK_FIELDS 对齐 */
+function normalizeChunkKeyword(keyword: string): string {
+  return keyword.toLowerCase().replace(/\s+/g, '_')
+}
+
 /**
  * Parse NovelAI Stealth PNG metadata from JSON object.
  */
-export function parseNovelAIStealth(json: Record<string, string>): ParsedMetadata {
+export function parseNovelAIStealth(json: Record<string, string>, report?: ParseReport): ParsedMetadata {
   const chunks: PngTextChunk[] = Object.entries(json).map(([keyword, text]) => ({
     keyword,
     text: typeof text === 'string' ? text : JSON.stringify(text),
   }))
-  return parseNovelAI(chunks)
+  return parseNovelAI(chunks, report)
 }
 
 // ===== Stealth PNG Decoder =====

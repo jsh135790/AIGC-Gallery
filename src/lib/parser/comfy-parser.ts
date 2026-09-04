@@ -1,4 +1,17 @@
-import type { ParsedMetadata, ImageParameters } from '@/types'
+import type { ParsedMetadata, ImageParameters, ParseReport } from '@/types'
+
+/** 生产构建里不该有解析日志。诊断信息的正阵地是 diagnostics + 查看器 */
+const debug: (...args: unknown[]) => void = import.meta.env.DEV
+  ? (...args) => console.log('[ComfyUI Parser]', ...args)
+  : () => {}
+
+/**
+ * 语义提取只认这些官方节点。自定义节点**只计入统计**,不参与参数推断 ——
+ * 从任意第三方节点猜 steps / sampler 会在猜错时把元数据写坏,代价远大于收益。
+ */
+const SEMANTIC_NODE_TYPES = new Set([
+  'CLIPTextEncode', 'KSampler', 'CheckpointLoaderSimple', 'LoraLoader', 'VAELoader', 'EmptyLatentImage',
+])
 
 interface ComfyNode {
   id: number
@@ -35,24 +48,32 @@ interface ComfyAPIWorkflow {
  * 1. API format (prompt chunk): { "1": { class_type: "...", inputs: {...} }, "2": {...} }
  * 2. Full format (workflow chunk): { nodes: [...], links: [...] }
  */
-export function parseComfyUI(workflowJson: string): ParsedMetadata {
+export function parseComfyUI(workflowJson: string, report?: ParseReport): ParsedMetadata {
   try {
     const data = JSON.parse(workflowJson)
 
     // Check if it's the full workflow format with nodes array
     if (data.nodes && Array.isArray(data.nodes)) {
-      return parseComfyUIFullFormat(data as ComfyWorkflow, workflowJson)
+      return parseComfyUIFullFormat(data as ComfyWorkflow, workflowJson, report)
     }
 
     // Otherwise, assume it's the API format (object with numeric keys)
     const keys = Object.keys(data)
     if (keys.length > 0 && keys.every(k => /^\d+$/.test(k))) {
-      return parseComfyUIAPIFormat(data as ComfyAPIWorkflow, workflowJson)
+      return parseComfyUIAPIFormat(data as ComfyAPIWorkflow, workflowJson, report)
     }
 
     return unknownResult(workflowJson)
-  } catch (error) {
+  } catch {
     return unknownResult(workflowJson)
+  }
+}
+
+/** 参与统计但没参与语义提取的节点类型,记进诊断 */
+function reportNonSemanticTypes(report: ParseReport | undefined, types: string[]): void {
+  if (!report) return
+  for (const type of new Set(types)) {
+    if (!SEMANTIC_NODE_TYPES.has(type)) report.unconsumedKeys.push(`node:${type}`)
   }
 }
 
@@ -60,14 +81,13 @@ export function parseComfyUI(workflowJson: string): ParsedMetadata {
  * Parse ComfyUI API format (from "prompt" chunk)
  * Format: { "1": { class_type: "CheckpointLoaderSimple", inputs: {...} }, ... }
  */
-function parseComfyUIAPIFormat(workflow: ComfyAPIWorkflow, rawText: string): ParsedMetadata {
+function parseComfyUIAPIFormat(workflow: ComfyAPIWorkflow, rawText: string, report?: ParseReport): ParsedMetadata {
   const nodes = Object.entries(workflow).map(([id, node]) => ({
     id,
     ...node
   }))
 
-  console.log('[ComfyUI API Parser] Total nodes:', nodes.length)
-  console.log('[ComfyUI API Parser] Node types:', nodes.map(n => n.class_type))
+  debug('api format, nodes:', nodes.length)
 
   let prompt = ''
   const parameters: ImageParameters = {}
@@ -75,10 +95,10 @@ function parseComfyUIAPIFormat(workflow: ComfyAPIWorkflow, rawText: string): Par
   // Add node statistics
   parameters.nodeCount = nodes.length
   parameters.nodeTypes = [...new Set(nodes.map(n => n.class_type))]
+  reportNonSemanticTypes(report, parameters.nodeTypes)
 
   // Extract prompts from CLIPTextEncode nodes (official only)
   const clipNodes = nodes.filter(n => n.class_type === 'CLIPTextEncode')
-  console.log('[ComfyUI API Parser] Found CLIPTextEncode nodes:', clipNodes.length)
   const prompts: string[] = []
   for (const node of clipNodes) {
     const text = node.inputs?.text
@@ -90,9 +110,7 @@ function parseComfyUIAPIFormat(workflow: ComfyAPIWorkflow, rawText: string): Par
 
   // Extract sampler parameters from KSampler (official only)
   const samplerNode = nodes.find(n => n.class_type === 'KSampler')
-  console.log('[ComfyUI API Parser] Found KSampler:', !!samplerNode)
   if (samplerNode?.inputs) {
-    console.log('[ComfyUI API Parser] KSampler inputs:', samplerNode.inputs)
     const inputs = samplerNode.inputs
     if (inputs.seed !== undefined) {
       // Handle array inputs (node references)
@@ -117,14 +135,12 @@ function parseComfyUIAPIFormat(workflow: ComfyAPIWorkflow, rawText: string): Par
 
   // Extract model from CheckpointLoaderSimple (official only)
   const checkpointNode = nodes.find(n => n.class_type === 'CheckpointLoaderSimple')
-  console.log('[ComfyUI API Parser] Found CheckpointLoaderSimple:', !!checkpointNode)
   if (checkpointNode?.inputs?.ckpt_name) {
     parameters.model = String(checkpointNode.inputs.ckpt_name)
   }
 
   // Extract LoRAs from LoraLoader nodes (official only)
   const loraNodes = nodes.filter(n => n.class_type === 'LoraLoader')
-  console.log('[ComfyUI API Parser] Found LoraLoader nodes:', loraNodes.length)
   const loras: string[] = []
   for (const node of loraNodes) {
     if (node.inputs?.lora_name) {
@@ -147,9 +163,7 @@ function parseComfyUIAPIFormat(workflow: ComfyAPIWorkflow, rawText: string): Par
 
   // Extract dimensions from EmptyLatentImage
   const latentNode = nodes.find(n => n.class_type === 'EmptyLatentImage')
-  console.log('[ComfyUI API Parser] Found EmptyLatentImage:', !!latentNode)
   if (latentNode?.inputs) {
-    console.log('[ComfyUI API Parser] EmptyLatentImage inputs:', latentNode.inputs)
     let width = latentNode.inputs.width
     let height = latentNode.inputs.height
 
@@ -161,8 +175,6 @@ function parseComfyUIAPIFormat(workflow: ComfyAPIWorkflow, rawText: string): Par
       parameters.size = `${width}x${height}`
     }
   }
-
-  console.log('[ComfyUI API Parser] Final parameters:', parameters)
 
   return {
     source: 'comfyui',
@@ -177,17 +189,26 @@ function parseComfyUIAPIFormat(workflow: ComfyAPIWorkflow, rawText: string): Par
  * Parse ComfyUI full workflow format (from "workflow" chunk)
  * Format: { nodes: [...], links: [...] }
  */
-function parseComfyUIFullFormat(workflow: ComfyWorkflow, rawText: string): ParsedMetadata {
+function parseComfyUIFullFormat(workflow: ComfyWorkflow, rawText: string, report?: ParseReport): ParsedMetadata {
   const nodes = workflow.nodes || []
 
-  // Filter to only core ComfyUI nodes
+  /*
+   * 统计覆盖**全部**节点。旧实现先过滤到 cnr_id === 'comfy-core' 才做任何事,
+   * 于是所有自定义节点(LoRA 加载器、放大、第三方采样器…)在 UI 上完全隐形 ——
+   * 对 ComfyUI 用户来说这是最大的一处丢数据。
+   */
+  const allTypes = [...new Set(nodes.map(node => node.type).filter(Boolean))]
+
+  // 语义提取仍只认核心节点,不从自定义节点猜参数
   const coreNodes = extractCoreNodes(nodes)
+  debug('full workflow, nodes:', nodes.length, 'core:', coreNodes.length)
 
-  // Extract prompts from all CLIPTextEncode nodes
   const prompt = extractPrompts(coreNodes)
-
-  // Extract sampler parameters
   const parameters = extractSamplerParams(coreNodes)
+
+  parameters.nodeCount = nodes.length
+  parameters.nodeTypes = allTypes
+  reportNonSemanticTypes(report, allTypes)
 
   // Extract model information
   const models = extractModels(coreNodes)
@@ -209,7 +230,8 @@ function parseComfyUIFullFormat(workflow: ComfyWorkflow, rawText: string): Parse
 }
 
 /**
- * Filter nodes to only those with cnr_id === "comfy-core"
+ * 过滤出核心节点。
+ * 注意:这只用于**语义提取**。节点统计走全量,别再把这个过滤器提到统计前面。
  */
 function extractCoreNodes(nodes: ComfyNode[]): ComfyNode[] {
   return nodes.filter(node => node.properties?.cnr_id === 'comfy-core')
