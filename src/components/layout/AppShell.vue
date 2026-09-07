@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { provide, ref, watch } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
 import { useRoute } from 'vue-router'
 import { PanelLeft, PanelLeftClose } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { useI18n } from '@/composables/useI18n'
+import { SIDEBAR_NAVIGATE } from './sidebar-navigate'
 
 withDefaults(defineProps<{
   /** toolbar 标题(mono 呈现);也可用 #toolbar 插槽完全自定义 */
@@ -37,6 +38,12 @@ defineExpose({ sidebarOpen, isMobile })
 function closeSidebarOnMobile() {
   if (isMobile.value) sidebarOpen.value = false
 }
+
+/*
+ * 只有导航项自己上报时才收起。挂在 `<aside @click>` 上会把面板里「新建文件夹」这类
+ * 按钮也算成导航,连带卸载整个面板 —— 详见 ./sidebar-navigate.ts。
+ */
+provide(SIDEBAR_NAVIGATE, closeSidebarOnMobile)
 </script>
 
 <template>
@@ -46,7 +53,6 @@ function closeSidebarOnMobile() {
       <aside
         v-if="sidebarOpen"
         class="glass-sidebar w-60 shrink-0 border-r md:relative fixed top-[var(--header-height)] md:top-0 bottom-0 left-0 z-40"
-        @click="closeSidebarOnMobile"
       >
         <slot name="sidebar" />
       </aside>

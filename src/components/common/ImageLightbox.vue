@@ -11,6 +11,7 @@ import {
 } from 'reka-ui'
 import { Button } from '@/components/ui/button'
 import { useI18n } from '@/composables/useI18n'
+import { downloadUrl } from '@/lib/download'
 
 const props = defineProps<{
   src: string
@@ -109,10 +110,8 @@ function zoomOut() {
 }
 
 function download() {
-  const a = document.createElement('a')
-  a.href = props.src
-  a.download = props.filename
-  a.click()
+  // src 由父组件铸造与持有,所以走 downloadUrl(它刻意不 revoke)
+  downloadUrl(props.src, props.filename)
 }
 
 function onKeyDown(event: KeyboardEvent) {

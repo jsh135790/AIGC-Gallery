@@ -87,10 +87,16 @@ export function sdFieldForKey(key: string): string {
 const NUMERIC_FIELDS = new Set(['steps', 'cfgScale', 'clipSkip', 'denoisingStrength'])
 
 /**
- * 定位参数行(以 `\nSteps:` 开头的那一段)在原始串里的起点。
+ * 定位参数行(以 `Steps:` 开头的那一段)在原始串里的起点。
  * 返回 -1 表示这份文本没有参数行。
+ *
+ * **必须同时认字符串开头**。A1111 会 strip() 整份 infotext:正负提示词都为空时,
+ * parameters chunk 直接以 `Steps: 20, ...` 起头,没有前导换行。只认 `\nSteps:` 会返回
+ * -1 → 整串被当成 prompt、parameters 为空,而 source 仍报 'sd';导出时
+ * buildSDParametersText 把这串当 prompt 写出去,**参数从文件里永久消失**。
  */
 export function findSDParamLineIndex(text: string): number {
+  if (/^Steps:/.test(text)) return 0
   const match = /\nSteps:/.exec(text)
   return match ? match.index + 1 : -1
 }

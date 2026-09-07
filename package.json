@@ -19,7 +19,6 @@
     "lucide-vue-next": "^0.563.0",
     "pako": "^2.1.0",
     "pinia": "^3.0.4",
-    "png-chunk-text": "^1.0.0",
     "png-chunks-encode": "^1.0.0",
     "png-chunks-extract": "^1.0.0",
     "reka-ui": "^2.8.0",

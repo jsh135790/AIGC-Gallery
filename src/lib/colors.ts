@@ -17,7 +17,7 @@ export const DEFAULT_SWATCH = '#6366f1'
  * hex → HSL 分量对象。用于把用户挑选的主题色写入 `--primary` 等
  * 以「H S% L%」形式存储的 CSS 变量(见 index.css 的令牌约定)。
  */
-export function hexToHsl(hex: string): { h: number; s: number; l: number } {
+function hexToHsl(hex: string): { h: number; s: number; l: number } {
   let c = hex.replace('#', '')
   if (c.length === 3) c = c.split('').map(x => x + x).join('')
   const r = parseInt(c.slice(0, 2), 16) / 255

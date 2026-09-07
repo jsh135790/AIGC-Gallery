@@ -2,10 +2,12 @@
 import { useThemeStore } from '@/stores/themeStore'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import ToastContainer from '@/components/common/ToastContainer.vue'
-import { useRouter } from 'vue-router'
 
-const themeStore = useThemeStore()
-const router = useRouter()
+/*
+ * 这个调用本身就是副作用:themeStore 在 setup 里同步跑一次 applyTheme(),
+ * 首帧就带上 .dark。返回值没人用,但**不能删调用** —— 删了主题就不会初始化。
+ */
+useThemeStore()
 </script>
 
 <template>

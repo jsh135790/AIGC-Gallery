@@ -1,4 +1,5 @@
 import { computed, ref, watch } from 'vue'
+import { DERIVED_FIELDS } from '@/lib/parser/fields'
 import type { ImageParameters, ImageSource, ParsedMetadata } from '@/types'
 
 /*
@@ -53,10 +54,9 @@ export interface ParamRow {
   locked: boolean
   /** 锁定原因的 i18n 键。不给就用通用文案 */
   lockReason?: string
+  /** 可编辑但有讲究(如必须填合法 JSON)。走 title,不禁用输入框 */
+  hint?: string
 }
-
-/** 只给 UI 看的派生字段,不参与脏态比较 */
-const DERIVED_FIELDS = new Set(['nodeCount', 'nodeTypes'])
 
 const session = ref<EditorSession | null>(null)
 
@@ -111,11 +111,23 @@ export function cloneParsedMetadata(meta: ParsedMetadata): ParsedMetadata {
  * 显式比较器,不用 JSON.stringify 对比 —— parameters 的键序不保证,
  * 而且 undefined 在 stringify 里会整键消失,两边都会给出假阴性/假阳性。
  */
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
 function sameValue(a: unknown, b: unknown): boolean {
   if (Array.isArray(a) || Array.isArray(b)) {
     const left = Array.isArray(a) ? a : []
     const right = Array.isArray(b) ? b : []
     return left.length === right.length && left.every((item, i) => sameValue(item, right[i]))
+  }
+  /*
+   * 对象要逐键比。`String({})` 一律是 `"[object Object]"`,两个内容不同的对象会被
+   * 判成相等 —— 用户改了嵌套字段却不算脏态,导出时那处改动无声丢失。
+   */
+  if (isPlainRecord(a) && isPlainRecord(b)) {
+    const keys = new Set([...Object.keys(a), ...Object.keys(b)])
+    return [...keys].every(key => sameValue(a[key], b[key]))
   }
   return String(a ?? '') === String(b ?? '')
 }

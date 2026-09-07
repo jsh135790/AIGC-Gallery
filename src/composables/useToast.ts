@@ -25,8 +25,7 @@ export function useToast() {
 
   function success(message: string) { addToast(message, 'success') }
   function error(message: string) { addToast(message, 'error') }
-  function warning(message: string) { addToast(message, 'warning') }
   function info(message: string) { addToast(message, 'info') }
 
-  return { toasts, addToast, removeToast, success, error, warning, info }
+  return { toasts, removeToast, success, error, info }
 }

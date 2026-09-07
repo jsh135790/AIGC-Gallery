@@ -80,5 +80,5 @@ export function useTypewriter(text: Ref<string>, opts: TypewriterOptions = {}) {
   if (auto) watch(text, start, { immediate: true })
   onUnmounted(stop)
 
-  return { display, isDone, start, skip: finish }
+  return { display, isDone }
 }

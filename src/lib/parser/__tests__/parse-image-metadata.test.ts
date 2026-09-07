@@ -72,6 +72,44 @@ describe('parseImageMetadata — SD WebUI', () => {
     expect(result.prompt).toBe('杰作, 最高画质')
     expect(result.negativePrompt).toBe('低分辨率, 手崩')
   })
+
+  it('正负提示词皆空时,参数行不能被整条当成 prompt', async () => {
+    /*
+     * A1111 会 strip() infotext,两个提示词都为空时 parameters chunk 直接以
+     * `Steps:` 开头、没有前导换行。旧的 findSDParamLineIndex 只认 `\nSteps:`,
+     * 返回 -1 → 整串进 prompt、parameters 为空,而 source 仍是 'sd'。
+     * 于是导出时 buildSDParametersText 把这串当 prompt 写出去,参数永久消失。
+     */
+    const tail = 'Steps: 28, Sampler: DPM++ 2M Karras, CFG scale: 7, Seed: 12345, Size: 832x1216'
+    const result = await parseImageMetadata(pngFile([tEXt('parameters', tail)]))
+    expect(result.source).toBe('sd')
+    expect(result.prompt).toBe('')
+    expect(result.negativePrompt).toBe('')
+    expect(result.parameters.steps).toBe(28)
+    expect(result.parameters.cfgScale).toBe(7)
+    expect(result.parameters.size).toBe('832x1216')
+  })
+})
+
+describe('parseImageMetadata — ComfyUI', () => {
+  it('API 格式里的连线输入不能当成参数值', async () => {
+    /*
+     * 连线序列化成 `[nodeId, outputIndex]`。旧的 `x[0]` 取的是节点号,于是
+     * seed 来自随机数节点的工作流把 Seed 报成 `10` 并存进图库。
+     * 现在跳过并记进诊断 —— 不顺连线求值(CLAUDE.md:不从节点结构推断语义)。
+     */
+    const api = JSON.stringify({
+      1: { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: 'sd_xl_base.safetensors' } },
+      2: { class_type: 'CLIPTextEncode', inputs: { text: '1girl, best quality' } },
+      3: { class_type: 'KSampler', inputs: { seed: ['10', 0], steps: 28, cfg: 7 } },
+    })
+    const result = await parseImageMetadata(pngFile([tEXt('prompt', api)]))
+    expect(result.source).toBe('comfyui')
+    expect(result.parameters.seed).toBeUndefined()
+    expect(result.parameters.steps).toBe(28)
+    expect(result.parameters.cfgScale).toBe(7)
+    expect(result.diagnostics?.unconsumedKeys).toContain('wired:seed←node10')
+  })
 })
 
 describe('parseImageMetadata — NovelAI', () => {

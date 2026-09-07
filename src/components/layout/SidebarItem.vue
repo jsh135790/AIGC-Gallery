@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { inject } from 'vue'
 import { cn } from '@/lib/utils'
 import SteppedNumber from '@/components/common/SteppedNumber.vue'
+import { SIDEBAR_NAVIGATE } from './sidebar-navigate'
 
 withDefaults(defineProps<{
   active?: boolean
@@ -15,6 +17,18 @@ withDefaults(defineProps<{
 const emit = defineEmits<{
   click: []
 }>()
+
+/*
+ * 移动端点导航项后收起侧栏。这里主动上报,而不是让 AppShell 在 `<aside>` 上兜着 ——
+ * 面板里的「新建文件夹」按钮不是导航,不该把整个面板连同它的对话框一起卸载。
+ * 不在 AppShell 里(单元测试 / 其他容器)时 inject 拿不到,那就什么都不做。
+ */
+const notifyNavigate = inject(SIDEBAR_NAVIGATE, null)
+
+function handleClick() {
+  emit('click')
+  notifyNavigate?.()
+}
 </script>
 
 <template>
@@ -27,7 +41,7 @@ const emit = defineEmits<{
         ? 'bg-primary/10 text-primary'
         : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
     )"
-    @click="emit('click')"
+    @click="handleClick"
   >
     <!-- 图标或色点 -->
     <span v-if="$slots.icon" class="shrink-0 [&_svg]:h-4 [&_svg]:w-4">

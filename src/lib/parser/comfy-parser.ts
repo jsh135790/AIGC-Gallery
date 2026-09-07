@@ -78,6 +78,37 @@ function reportNonSemanticTypes(report: ParseReport | undefined, types: string[]
 }
 
 /**
+ * API 格式把**连线**输入序列化成 `[nodeId, outputIndex]`。
+ *
+ * 旧实现的 `Array.isArray(x) ? x[0] : x` 取的正是那个节点号:seed 来自随机数节点的
+ * 工作流会把 Seed 报成 `10`,Steps / Size 同理,而且这个错数字会入库。
+ *
+ * 这里只认字面量,连线一律跳过 —— 不顺着连线求值是 CLAUDE.md 的红线(不从节点结构
+ * 推断参数语义)。报一个看起来像真值的错数字,比留空危险得多。
+ */
+function isWiredInput(value: unknown): value is [string | number, number] {
+  return Array.isArray(value)
+    && value.length === 2
+    && (typeof value[0] === 'string' || typeof value[0] === 'number')
+    && typeof value[1] === 'number'
+}
+
+/** 取字面量输入。是连线就返回 undefined 并记进诊断,查看器第三层会点名 */
+function literalInput(
+  inputs: Record<string, unknown> | undefined,
+  key: string,
+  report?: ParseReport
+): unknown {
+  const value = inputs?.[key]
+  if (value === undefined) return undefined
+  if (isWiredInput(value)) {
+    report?.unconsumedKeys.push(`wired:${key}←node${value[0]}`)
+    return undefined
+  }
+  return value
+}
+
+/**
  * Parse ComfyUI API format (from "prompt" chunk)
  * Format: { "1": { class_type: "CheckpointLoaderSimple", inputs: {...} }, ... }
  */
@@ -89,7 +120,6 @@ function parseComfyUIAPIFormat(workflow: ComfyAPIWorkflow, rawText: string, repo
 
   debug('api format, nodes:', nodes.length)
 
-  let prompt = ''
   const parameters: ImageParameters = {}
 
   // Add node statistics
@@ -101,54 +131,45 @@ function parseComfyUIAPIFormat(workflow: ComfyAPIWorkflow, rawText: string, repo
   const clipNodes = nodes.filter(n => n.class_type === 'CLIPTextEncode')
   const prompts: string[] = []
   for (const node of clipNodes) {
-    const text = node.inputs?.text
+    const text = literalInput(node.inputs, 'text', report)
     if (text && typeof text === 'string') {
       prompts.push(text.trim())
     }
   }
-  prompt = prompts.join('\n---\n')
+  const prompt = prompts.join('\n---\n')
 
   // Extract sampler parameters from KSampler (official only)
   const samplerNode = nodes.find(n => n.class_type === 'KSampler')
   if (samplerNode?.inputs) {
     const inputs = samplerNode.inputs
-    if (inputs.seed !== undefined) {
-      // Handle array inputs (node references)
-      const seed = Array.isArray(inputs.seed) ? inputs.seed[0] : inputs.seed
-      parameters.seed = String(seed)
-    }
-    if (inputs.steps !== undefined) {
-      const steps = Array.isArray(inputs.steps) ? inputs.steps[0] : inputs.steps
-      parameters.steps = Number(steps)
-    }
-    if (inputs.cfg !== undefined) {
-      const cfg = Array.isArray(inputs.cfg) ? inputs.cfg[0] : inputs.cfg
-      parameters.cfgScale = Number(cfg)
-    }
-    if (inputs.sampler_name !== undefined) parameters.sampler = String(inputs.sampler_name)
-    if (inputs.scheduler !== undefined) parameters.scheduler = String(inputs.scheduler)
-    if (inputs.denoise !== undefined) {
-      const denoise = Array.isArray(inputs.denoise) ? inputs.denoise[0] : inputs.denoise
-      parameters.denoisingStrength = Number(denoise)
-    }
+    const seed = literalInput(inputs, 'seed', report)
+    if (seed !== undefined) parameters.seed = String(seed)
+    const steps = literalInput(inputs, 'steps', report)
+    if (steps !== undefined) parameters.steps = Number(steps)
+    const cfg = literalInput(inputs, 'cfg', report)
+    if (cfg !== undefined) parameters.cfgScale = Number(cfg)
+    const samplerName = literalInput(inputs, 'sampler_name', report)
+    if (samplerName !== undefined) parameters.sampler = String(samplerName)
+    const scheduler = literalInput(inputs, 'scheduler', report)
+    if (scheduler !== undefined) parameters.scheduler = String(scheduler)
+    const denoise = literalInput(inputs, 'denoise', report)
+    if (denoise !== undefined) parameters.denoisingStrength = Number(denoise)
   }
 
   // Extract model from CheckpointLoaderSimple (official only)
   const checkpointNode = nodes.find(n => n.class_type === 'CheckpointLoaderSimple')
-  if (checkpointNode?.inputs?.ckpt_name) {
-    parameters.model = String(checkpointNode.inputs.ckpt_name)
-  }
+  const ckptName = literalInput(checkpointNode?.inputs, 'ckpt_name', report)
+  if (ckptName) parameters.model = String(ckptName)
 
   // Extract LoRAs from LoraLoader nodes (official only)
   const loraNodes = nodes.filter(n => n.class_type === 'LoraLoader')
   const loras: string[] = []
   for (const node of loraNodes) {
-    if (node.inputs?.lora_name) {
-      const name = String(node.inputs.lora_name)
-      const weight = node.inputs.strength_model !== undefined
-        ? Number(node.inputs.strength_model).toFixed(2)
-        : '1.00'
-      loras.push(`${name} (${weight})`)
+    const loraName = literalInput(node.inputs, 'lora_name', report)
+    if (loraName) {
+      const strength = literalInput(node.inputs, 'strength_model', report)
+      const weight = strength !== undefined ? Number(strength).toFixed(2) : '1.00'
+      loras.push(`${String(loraName)} (${weight})`)
     }
   }
   if (loras.length > 0) {
@@ -157,23 +178,15 @@ function parseComfyUIAPIFormat(workflow: ComfyAPIWorkflow, rawText: string, repo
 
   // Extract VAE from VAELoader (official only)
   const vaeNode = nodes.find(n => n.class_type === 'VAELoader')
-  if (vaeNode?.inputs?.vae_name) {
-    parameters.vae = String(vaeNode.inputs.vae_name)
-  }
+  const vaeName = literalInput(vaeNode?.inputs, 'vae_name', report)
+  if (vaeName) parameters.vae = String(vaeName)
 
   // Extract dimensions from EmptyLatentImage
   const latentNode = nodes.find(n => n.class_type === 'EmptyLatentImage')
-  if (latentNode?.inputs) {
-    let width = latentNode.inputs.width
-    let height = latentNode.inputs.height
-
-    // Handle array inputs (node references)
-    if (Array.isArray(width)) width = width[0]
-    if (Array.isArray(height)) height = height[0]
-
-    if (width !== undefined && height !== undefined) {
-      parameters.size = `${width}x${height}`
-    }
+  const width = literalInput(latentNode?.inputs, 'width', report)
+  const height = literalInput(latentNode?.inputs, 'height', report)
+  if (width !== undefined && height !== undefined) {
+    parameters.size = `${String(width)}x${String(height)}`
   }
 
   return {

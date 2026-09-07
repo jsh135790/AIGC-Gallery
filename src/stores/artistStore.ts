@@ -1,24 +1,8 @@
 import { defineStore } from 'pinia'
-import { ref, computed, toRaw, watch } from 'vue'
-import { db } from '@/lib/db'
+import { ref, computed, watch } from 'vue'
+import { db, stripProxy } from '@/lib/db'
 import { DEFAULT_SWATCH } from '@/lib/colors'
 import type { Artist, ArtistPage, SortOrder } from '@/types'
-
-/** Strip all Vue reactive proxies so IndexedDB can structured-clone the data. */
-function stripProxy<T extends Record<string, unknown>>(obj: T): T {
-  const raw = toRaw(obj) as Record<string, unknown>
-  const out: Record<string, unknown> = {}
-  for (const [k, v] of Object.entries(raw)) {
-    if (Array.isArray(v)) {
-      out[k] = Array.from(v).map(item => toRaw(item))
-    } else if (v && typeof v === 'object' && !(v instanceof Blob) && !(v instanceof Date)) {
-      out[k] = toRaw(v)
-    } else {
-      out[k] = v
-    }
-  }
-  return out as T
-}
 
 const DEFAULT_PAGE_COLOR = DEFAULT_SWATCH
 const SELECTED_PAGE_KEY = 'artistGallery.selectedPageId'
@@ -140,11 +124,23 @@ export const useArtistStore = defineStore('artist', () => {
     return id as number
   }
 
+  /*
+   * 以下写操作全部是「先改内存、再写库」的乐观更新,与 aigcStore 同形:
+   * 每一处都先留快照,DB 抛错(配额、结构化克隆失败)时把内存恢复原样再往上抛。
+   * 少了这一步的表现是:界面显示改动成功,刷新后无声复原 —— 删除画师尤其致命。
+   */
   async function updatePage(id: number, data: Partial<ArtistPage>) {
     const now = new Date()
     const page = pages.value.find(p => p.id === id)
+    const snapshot = page ? { ...page } : undefined
     if (page) Object.assign(page, data, { updatedAt: now })
-    await db.artistPages.update(id, { ...stripProxy(data as Record<string, unknown>), updatedAt: now })
+
+    try {
+      await db.artistPages.update(id, { ...stripProxy(data), updatedAt: now })
+    } catch (error) {
+      if (page && snapshot) Object.assign(page, snapshot)
+      throw error
+    }
   }
 
   /**
@@ -161,6 +157,9 @@ export const useArtistStore = defineStore('artist', () => {
     // Memory: reassign artists, drop page
     const now = new Date()
     const orphans = artists.value.filter(a => a.pageId === id)
+    const orphanSnapshots = orphans.map(a => ({ artist: a, pageId: a.pageId, updatedAt: a.updatedAt }))
+    const pageSnapshot = pages.value.slice()
+    const selectedSnapshot = selectedPageId.value
     for (const a of orphans) {
       a.pageId = fallbackId
       a.updatedAt = now
@@ -171,16 +170,27 @@ export const useArtistStore = defineStore('artist', () => {
       selectedPageId.value = fallbackId
     }
 
-    // DB: reassign in bulk then delete
-    await Promise.all(
-      orphans.map(a => db.artists.update(a.id!, { pageId: fallbackId, updatedAt: now }))
-    )
-    await db.artistPages.delete(id)
+    try {
+      // DB: reassign in bulk then delete
+      await Promise.all(
+        orphans.map(a => db.artists.update(a.id!, { pageId: fallbackId, updatedAt: now }))
+      )
+      await db.artistPages.delete(id)
+    } catch (error) {
+      for (const snap of orphanSnapshots) {
+        snap.artist.pageId = snap.pageId
+        snap.artist.updatedAt = snap.updatedAt
+      }
+      pages.value = pageSnapshot
+      selectedPageId.value = selectedSnapshot
+      throw error
+    }
     return { ok: true }
   }
 
   async function reorderPages(orderedIds: number[]) {
     const now = new Date()
+    const snapshots = pages.value.map(p => ({ page: p, sortOrder: p.sortOrder, updatedAt: p.updatedAt }))
     orderedIds.forEach((id, idx) => {
       const p = pages.value.find(pg => pg.id === id)
       if (p) {
@@ -188,9 +198,18 @@ export const useArtistStore = defineStore('artist', () => {
         p.updatedAt = now
       }
     })
-    await Promise.all(
-      orderedIds.map((id, idx) => db.artistPages.update(id, { sortOrder: idx, updatedAt: now }))
-    )
+
+    try {
+      await Promise.all(
+        orderedIds.map((id, idx) => db.artistPages.update(id, { sortOrder: idx, updatedAt: now }))
+      )
+    } catch (error) {
+      for (const snap of snapshots) {
+        snap.page.sortOrder = snap.sortOrder
+        snap.page.updatedAt = snap.updatedAt
+      }
+      throw error
+    }
   }
 
   async function movePageUp(id: number) {
@@ -274,44 +293,55 @@ export const useArtistStore = defineStore('artist', () => {
   }
 
   async function updateArtist(id: number, data: Partial<Artist>) {
-    const clean = stripProxy(data as Record<string, unknown>)
+    const clean = stripProxy(data)
     const now = new Date()
 
     const artist = artists.value.find(a => a.id === id)
+    // 浅拷贝够用:images 是整体替换而不是原地改,恢复引用即可回到原样
+    const snapshot = artist ? { ...artist } : undefined
     if (artist) {
       if (clean.images) {
-        artist.images = Array.from(clean.images as Blob[])
+        artist.images = Array.from(clean.images)
       }
       Object.assign(artist, { ...clean, updatedAt: now })
     }
 
-    await db.artists.update(id, { ...clean, updatedAt: now })
+    try {
+      await db.artists.update(id, { ...clean, updatedAt: now })
+    } catch (error) {
+      if (artist && snapshot) Object.assign(artist, snapshot)
+      throw error
+    }
   }
 
   async function deleteArtist(id: number) {
+    const snapshot = artists.value.slice()
     artists.value = artists.value.filter(a => a.id !== id)
-    await db.artists.delete(id)
+    try {
+      await db.artists.delete(id)
+    } catch (error) {
+      artists.value = snapshot
+      throw error
+    }
   }
 
   async function toggleFavorite(id: number) {
     const artist = artists.value.find(a => a.id === id)
-    if (artist) {
-      const newFavoriteState = !artist.isFavorite
-      const now = new Date()
-      artist.isFavorite = newFavoriteState
-      artist.updatedAt = now
-      await db.artists.update(id, { isFavorite: newFavoriteState, updatedAt: now })
-    }
-  }
+    if (!artist) return
 
-  async function moveArtistToPage(artistId: number, pageId: number) {
+    const snapshot = { isFavorite: artist.isFavorite, updatedAt: artist.updatedAt }
+    const newFavoriteState = !artist.isFavorite
     const now = new Date()
-    const artist = artists.value.find(a => a.id === artistId)
-    if (artist) {
-      artist.pageId = pageId
-      artist.updatedAt = now
+    artist.isFavorite = newFavoriteState
+    artist.updatedAt = now
+
+    try {
+      await db.artists.update(id, { isFavorite: newFavoriteState, updatedAt: now })
+    } catch (error) {
+      artist.isFavorite = snapshot.isFavorite
+      artist.updatedAt = snapshot.updatedAt
+      throw error
     }
-    await db.artists.update(artistId, { pageId, updatedAt: now })
   }
 
   // ===== Import / Export =====
@@ -388,20 +418,16 @@ export const useArtistStore = defineStore('artist', () => {
     categories,
     // pages
     loadAll,
-    loadPages,
     addPage,
     updatePage,
     deletePage,
-    reorderPages,
     movePageUp,
     movePageDown,
     // artists
-    loadArtists,
     addArtist,
     updateArtist,
     deleteArtist,
     toggleFavorite,
-    moveArtistToPage,
     // import/export
     exportCurrentPage,
     importArtists,

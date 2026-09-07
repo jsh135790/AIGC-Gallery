@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { MapPin } from 'lucide-vue-next'
 import MetadataPromptGroove from './MetadataPromptGroove.vue'
 import { useI18n } from '@/composables/useI18n'
+import { isAutoPosition } from '@/lib/parser/fields'
 import type { NAICharacterPrompt } from '@/types'
 
 /*
@@ -21,10 +22,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-const isAuto = computed(() => {
-  const centers = props.character.centers
-  return centers.length === 1 && Math.round(centers[0].x) === 0 && Math.round(centers[0].y) === 0
-})
+const isAuto = computed(() => isAutoPosition(props.character.centers))
 
 const coordText = computed(() => {
   if (isAuto.value) return t('metadata.autoPosition')

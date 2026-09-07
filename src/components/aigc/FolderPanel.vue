@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import {
   Images, Inbox, Heart, Folder, FolderPlus,
   MoreHorizontal, Pencil, Trash2, Palette,

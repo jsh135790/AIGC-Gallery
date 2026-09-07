@@ -2,6 +2,8 @@ import extract from 'png-chunks-extract'
 import encode from 'png-chunks-encode'
 import type { ParsedMetadata, ImageSource } from '@/types'
 import { splitSDParams, sdFieldForKey, SD_FIELD_TO_KEY, findSDParamLineIndex } from './sd-parser'
+import { DERIVED_FIELDS } from './fields'
+import type { PngChunkLike } from './png-parser'
 import { TRACE_KEYWORD } from './trace'
 
 /*
@@ -16,22 +18,11 @@ import { TRACE_KEYWORD } from './trace'
  * 原始键拼写逐项搬运,只替换用户真的改过的键;不认识的键原样留在原位置。
  */
 
-/** 编辑痕迹 chunk 的 keyword。读侧也要认它,所以常量放在 ./trace 共用 */
-export { TRACE_KEYWORD } from './trace'
-
-/** 只给 UI 看的派生字段,不属于图片元数据,不写进文件 */
-const DERIVED_FIELDS = new Set(['nodeCount', 'nodeTypes'])
-
 /** NAI 这几个值来自独立 tEXt chunk(原样透传),不该塞进 Comment JSON */
 const NAI_CHUNK_FIELDS = new Set(['source', 'generation_time', 'title', 'software'])
 
 /** Comment JSON 里有专门处理逻辑的字段,不走"其余字段"那条通道 */
 const NAI_CORE_FIELDS = new Set(['steps', 'sampler', 'cfgScale', 'seed', 'size', 'model'])
-
-interface PngChunkLike {
-  name: string
-  data: Uint8Array
-}
 
 export type MetadataWriteErrorCode = 'unsupported-source' | 'nothing-to-write'
 
@@ -186,10 +177,15 @@ function buildSDParametersText(metadata: ParsedMetadata): string {
    */
   if (originalPairs.length === 0) hoistSteps(parts)
 
-  let content = metadata.prompt || ''
-  if (metadata.negativePrompt) content += `\nNegative prompt: ${metadata.negativePrompt}`
-  if (parts.length) content += `\n${parts.join(', ')}`
-  return content
+  /*
+   * 正向提示词为空时不留前导空行 —— A1111 自己会 strip 整份 infotext,
+   * 我们写出的形状要能被同一个读侧原样认回来(见 findSDParamLineIndex 认字符串开头)。
+   */
+  const lines: string[] = [metadata.prompt || '']
+  if (metadata.negativePrompt) lines.push(`Negative prompt: ${metadata.negativePrompt}`)
+  if (parts.length) lines.push(parts.join(', '))
+  if (!lines[0]) lines.shift()
+  return lines.join('\n')
 }
 
 function hoistSteps(parts: string[]): void {

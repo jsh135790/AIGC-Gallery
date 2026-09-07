@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { Expand, Upload } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { useI18n } from '@/composables/useI18n'
+import { formatBytes } from '@/lib/format'
 import type { ImageSource } from '@/types'
 
 /*
@@ -16,6 +17,8 @@ const props = defineProps<{
   filename: string
   fileSize: number
   source: ImageSource
+  /** 导出 / 回写进行中。此时不许换图:写回流程在 await 前捕获了会话 */
+  busy?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -32,18 +35,17 @@ const dimensions = computed(() =>
   naturalWidth.value && naturalHeight.value ? `${naturalWidth.value}×${naturalHeight.value}` : '—'
 )
 
-const sizeText = computed(() => {
-  const bytes = props.fileSize
-  if (!bytes) return '—'
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-  return `${(bytes / 1024 / 1024).toFixed(2)} MB`
-})
+const sizeText = computed(() => formatBytes(props.fileSize))
 
 const formatText = computed(() => {
   const ext = props.filename.split('.').pop()
   return ext && ext !== props.filename ? ext.toUpperCase() : 'PNG'
 })
 
+/*
+ * 刻意用短写(SD WebUI / NovelAI)。查看器那份 SOURCE_LABELS 给的是全称
+ * (Stable Diffusion),两者不合并 —— 这一栏是窄栏读出,全称会换行。
+ */
 const sourceLabel = computed(() => {
   if (props.source === 'sd') return 'SD WebUI'
   if (props.source === 'nai') return 'NovelAI'
@@ -118,7 +120,7 @@ function onFileChange(event: Event) {
         </div>
       </div>
 
-      <Button variant="outline" size="sm" class="w-full text-xs" @click="fileInput?.click()">
+      <Button variant="outline" size="sm" class="w-full text-xs" :disabled="busy" @click="fileInput?.click()">
         <Upload class="h-3.5 w-3.5" />
         {{ t('metadata.editor.replaceImage') }}
       </Button>

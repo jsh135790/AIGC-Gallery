@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import StarRating from '@/components/common/StarRating.vue'
 import { useI18n } from '@/composables/useI18n'
+import { useCopyFeedback } from '@/composables/useCopyFeedback'
 import type { Artist } from '@/types'
 
 const props = defineProps<{
@@ -18,9 +19,9 @@ const emit = defineEmits<{
   copy: [prompt: string]
 }>()
 
-const { t } = useI18n()
+const { t, translateCategory } = useI18n()
 const thumbnailUrl = ref<string | null>(null)
-const copied = ref(false)
+const { copiedKey, copy } = useCopyFeedback()
 
 // Watch for changes in artist.images and regenerate thumbnail URL
 watch(() => props.artist.images, (newImages) => {
@@ -44,34 +45,11 @@ onUnmounted(() => {
   }
 })
 
-// Translate category name
-const translatedCategory = computed(() => {
-  if (!props.artist.category) return ''
-
-  // Map Chinese category names to translation keys
-  const categoryMap: Record<string, string> = {
-    '写实': 'category.realistic',
-    '二次元': 'category.anime',
-    '半写实': 'category.semiRealistic',
-    '概念艺术': 'category.conceptArt',
-    '水彩风': 'category.watercolor',
-    '油画风': 'category.oilPainting',
-    '插画': 'category.illustration',
-    '像素风': 'category.pixelArt',
-    '其他': 'category.other',
-  }
-
-  const key = categoryMap[props.artist.category]
-  return key ? t(key) : props.artist.category
-})
+const translatedCategory = computed(() => translateCategory(props.artist.category))
 
 async function copyPrompt() {
-  try {
-    await navigator.clipboard.writeText(props.artist.prompt)
-    copied.value = true
-    setTimeout(() => { copied.value = false }, 1500)
-    emit('copy', props.artist.prompt)
-  } catch { /* ignore */ }
+  await copy(props.artist.prompt)
+  emit('copy', props.artist.prompt)
 }
 </script>
 
@@ -141,7 +119,7 @@ async function copyPrompt() {
             </button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>{{ copied ? t('common.copied') : t('artist.copyPrompt') }}</p>
+            <p>{{ copiedKey ? t('common.copied') : t('artist.copyPrompt') }}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

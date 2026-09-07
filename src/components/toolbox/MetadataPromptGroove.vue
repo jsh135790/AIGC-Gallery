@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import SectionLabel from '@/components/common/SectionLabel.vue'
 import { extractTags } from '@/lib/parser'
 import { useI18n } from '@/composables/useI18n'
+import { useCopyFeedback } from '@/composables/useCopyFeedback'
 
 /*
  * 提示词凹槽。底色用 --background 而不是 --card:暗色下 background 比 card 更暗,
@@ -38,12 +39,11 @@ const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 const { t } = useI18n()
 const field = ref<HTMLTextAreaElement | null>(null)
 const wrapper = ref<HTMLElement | null>(null)
-const copied = ref(false)
+const { copiedKey: copied, copy } = useCopyFeedback()
 
 const tagCount = computed(() => extractTags(props.modelValue).length)
 
 let frame = 0
-let copyTimer = 0
 let observer: ResizeObserver | null = null
 let lastWidth = 0
 
@@ -62,17 +62,6 @@ function autosize() {
 function scheduleAutosize() {
   cancelAnimationFrame(frame)
   frame = requestAnimationFrame(autosize)
-}
-
-async function copy() {
-  try {
-    await navigator.clipboard.writeText(props.modelValue)
-  } catch {
-    return
-  }
-  copied.value = true
-  clearTimeout(copyTimer)
-  copyTimer = window.setTimeout(() => { copied.value = false }, 1500)
 }
 
 watch(() => props.modelValue, () => { void nextTick(autosize) })
@@ -97,7 +86,6 @@ onMounted(() => {
 
 onUnmounted(() => {
   cancelAnimationFrame(frame)
-  clearTimeout(copyTimer)
   observer?.disconnect()
 })
 </script>
@@ -116,7 +104,7 @@ onUnmounted(() => {
         :class="dense ? 'ml-auto' : ''"
         :disabled="!modelValue"
         :aria-label="t('common.copy')"
-        @click="copy"
+        @click="copy(modelValue)"
       >
         <Check v-if="copied" class="h-3 w-3 text-success" />
         <Copy v-else class="h-3 w-3" />

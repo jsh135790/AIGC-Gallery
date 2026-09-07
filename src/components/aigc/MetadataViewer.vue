@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { Copy, Check, Users, MapPin } from 'lucide-vue-next'
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import SectionLabel from '@/components/common/SectionLabel.vue'
 import MetadataRow from '@/components/common/MetadataRow.vue'
 import { useI18n } from '@/composables/useI18n'
+import { useCopyFeedback } from '@/composables/useCopyFeedback'
+import { isAutoPosition } from '@/lib/parser/fields'
 import type { AIGCImage } from '@/types'
 
 const props = defineProps<{
@@ -14,15 +16,7 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
-const copiedField = ref<string | null>(null)
-
-async function copyText(text: string, field: string) {
-  try {
-    await navigator.clipboard.writeText(text)
-    copiedField.value = field
-    setTimeout(() => { copiedField.value = null }, 1500)
-  } catch { /* ignore */ }
-}
+const { copiedKey, copy } = useCopyFeedback()
 
 const paramEntries = computed(() =>
   Object.entries(props.image.parameters || {})
@@ -34,10 +28,6 @@ const nodeTypes = computed(() => props.image.parameters?.nodeTypes as string[] |
 
 function formatCoord(val: number): string {
   return Math.round(val).toString()
-}
-
-function isAutoPosition(centers: { x: number; y: number }[]): boolean {
-  return centers.length === 1 && Math.round(centers[0].x) === 0 && Math.round(centers[0].y) === 0
 }
 </script>
 
@@ -59,9 +49,9 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
           variant="ghost"
           size="icon"
           class="h-6 w-6"
-          @click="copyText(image.prompt, 'prompt')"
+          @click="copy(image.prompt, 'prompt')"
         >
-          <Check v-if="copiedField === 'prompt'" class="h-3 w-3 text-success" />
+          <Check v-if="copiedKey === 'prompt'" class="h-3 w-3 text-success" />
           <Copy v-else class="h-3 w-3" />
         </Button>
       </div>
@@ -78,9 +68,9 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
           variant="ghost"
           size="icon"
           class="h-6 w-6"
-          @click="copyText(image.negativePrompt, 'negative')"
+          @click="copy(image.negativePrompt, 'negative')"
         >
-          <Check v-if="copiedField === 'negative'" class="h-3 w-3 text-success" />
+          <Check v-if="copiedKey === 'negative'" class="h-3 w-3 text-success" />
           <Copy v-else class="h-3 w-3" />
         </Button>
       </div>
@@ -107,9 +97,9 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
             variant="ghost"
             size="icon"
             class="h-5 w-5"
-            @click="copyText(image.v4Data.basePrompt, 'v4base')"
+            @click="copy(image.v4Data.basePrompt, 'v4base')"
           >
-            <Check v-if="copiedField === 'v4base'" class="h-2.5 w-2.5 text-success" />
+            <Check v-if="copiedKey === 'v4base'" class="h-2.5 w-2.5 text-success" />
             <Copy v-else class="h-2.5 w-2.5" />
           </Button>
         </div>
@@ -147,9 +137,9 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
               variant="ghost"
               size="icon"
               class="h-5 w-5"
-              @click="copyText(char.prompt, `char${char.idx}p`)"
+              @click="copy(char.prompt, `char${char.idx}p`)"
             >
-              <Check v-if="copiedField === `char${char.idx}p`" class="h-2.5 w-2.5 text-success" />
+              <Check v-if="copiedKey === `char${char.idx}p`" class="h-2.5 w-2.5 text-success" />
               <Copy v-else class="h-2.5 w-2.5" />
             </Button>
           </div>
@@ -166,9 +156,9 @@ function isAutoPosition(centers: { x: number; y: number }[]): boolean {
               variant="ghost"
               size="icon"
               class="h-5 w-5"
-              @click="copyText(char.negative, `char${char.idx}n`)"
+              @click="copy(char.negative, `char${char.idx}n`)"
             >
-              <Check v-if="copiedField === `char${char.idx}n`" class="h-2.5 w-2.5 text-success" />
+              <Check v-if="copiedKey === `char${char.idx}n`" class="h-2.5 w-2.5 text-success" />
               <Copy v-else class="h-2.5 w-2.5" />
             </Button>
           </div>

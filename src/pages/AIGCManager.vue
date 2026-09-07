@@ -6,6 +6,7 @@ import {
 import { useAigcStore } from '@/stores/aigcStore'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
+import { useAigcSettings } from '@/composables/useAigcSettings'
 import { parseImageMetadata, generateThumbnail, getTagsFromPrompt } from '@/lib/parser'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -24,11 +25,12 @@ import FolderPanel from '@/components/aigc/FolderPanel.vue'
 import ImageCard from '@/components/aigc/ImageCard.vue'
 import MasonryGrid from '@/components/aigc/MasonryGrid.vue'
 import ImageDetailPanel from '@/components/aigc/ImageDetailPanel.vue'
-import type { AIGCImage } from '@/types'
+import type { AIGCImage, ParsedMetadata } from '@/types'
 
 const store = useAigcStore()
 const toast = useToast()
 const { t } = useI18n()
+const { autoParseTags } = useAigcSettings()
 
 const detailImageId = ref<number | null>(null)
 const detailOpen = ref(false)
@@ -58,6 +60,24 @@ onMounted(() => {
   })
 })
 
+/**
+ * 从提示词切出 tag(含 NAI v4 的角色提示词)。
+ *
+ * 切分规则是"按顶层逗号切",只对 tag 风格提示词成立 —— 自然语言提示词会被切成
+ * 一堆句子级"标签"写进库并计入 db.tags,所以是否调用它由设置里的开关决定。
+ */
+function collectAutoTags(meta: ParsedMetadata): string[] {
+  const allPrompts: string[] = []
+  if (meta.prompt) allPrompts.push(meta.prompt)
+  if (meta.v4Data) {
+    if (meta.v4Data.basePrompt) allPrompts.push(meta.v4Data.basePrompt)
+    for (const char of meta.v4Data.characters) {
+      if (char.prompt) allPrompts.push(char.prompt)
+    }
+  }
+  return allPrompts.length > 0 ? getTagsFromPrompt(allPrompts.join(', ')) : []
+}
+
 // Upload handler
 async function handleUpload(files: File[]) {
   if (isUploading.value || files.length === 0) return
@@ -67,6 +87,8 @@ async function handleUpload(files: File[]) {
   const total = files.length
   const drafts: Array<Omit<AIGCImage, 'id' | 'createdAt' | 'updatedAt'>> = []
   let failedCount = 0
+  // 进循环前取一次快照:上传中途翻开关不该让同一批图前后不一致
+  const shouldAutoTag = autoParseTags.value
 
   try {
     for (let i = 0; i < files.length; i++) {
@@ -80,18 +102,7 @@ async function handleUpload(files: File[]) {
         parseUrl = URL.createObjectURL(file)
         const meta = await parseImageMetadata(file, parseUrl)
 
-        // Extract tags from prompt (including v4 character prompts)
-        const allPrompts: string[] = []
-        if (meta.prompt) allPrompts.push(meta.prompt)
-        if (meta.v4Data) {
-          if (meta.v4Data.basePrompt) allPrompts.push(meta.v4Data.basePrompt)
-          for (const char of meta.v4Data.characters) {
-            if (char.prompt) allPrompts.push(char.prompt)
-          }
-        }
-        const tags = allPrompts.length > 0
-          ? getTagsFromPrompt(allPrompts.join(', '))
-          : []
+        const tags = shouldAutoTag ? collectAutoTags(meta) : []
 
         const folderId = typeof store.selectedFolderId === 'number'
           ? store.selectedFolderId
@@ -110,6 +121,8 @@ async function handleUpload(files: File[]) {
           parameters: meta.parameters,
           rawMetadata: meta.rawText,
           v4Data: meta.v4Data,
+          // 隐写标记要带上,否则编辑器无从知道"写回不会同步隐藏的那一份"
+          ...(meta.stealth ? { stealth: true } : {}),
           tags,
           isFavorite: false,
         })
@@ -315,7 +328,7 @@ const currentFolderLabel = computed(() => {
           :key="tag"
           variant="secondary"
           class="gap-1 text-xs cursor-pointer"
-          @click="store.selectedTags = store.selectedTags.filter(t => t !== tag)"
+          @click="store.toggleTagFilter(tag)"
         >
           {{ tag }}
           <X class="h-3 w-3" />

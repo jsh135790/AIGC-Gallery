@@ -1,4 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
+import { toRaw } from 'vue'
 import type { Artist, ArtistPage, AIGCImage, AIGCFolder, Tag } from '@/types'
 
 const db = new Dexie('aigc-gallery') as Dexie & {
@@ -46,3 +47,40 @@ db.version(2)
   })
 
 export { db }
+
+/*
+ * IndexedDB 用结构化克隆存值,而结构化克隆克隆不了 Vue 的 reactive proxy
+ * (抛 DataCloneError)。这个函数存在的唯一理由就是让对象能被写进去,所以放在 db 模块。
+ *
+ * **必须是深度的**。旧实现只对顶层 `toRaw`:
+ *   `{ ...(img.parameters ?? {}) }` 逐值读出来的嵌套数组仍然是 proxy,
+ *   新建的 plain object 让顶层 `toRaw` 成了空操作 —— `update()` 抛 DataCloneError,
+ *   而调用处一个 `catch {}` 把它咽下去,于是内存里改了、库里没改,报告还说"回补 0 条"。
+ */
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (value === null || typeof value !== 'object') return false
+  const proto = Object.getPrototypeOf(value)
+  return proto === Object.prototype || proto === null
+}
+
+/** 递归解包 reactive proxy。Blob / File / Date 等结构化克隆原生支持的类型原样返回 */
+export function stripProxy<T>(value: T): T {
+  const raw = toRaw(value)
+
+  if (Array.isArray(raw)) {
+    return raw.map(item => stripProxy(item)) as unknown as T
+  }
+
+  /*
+   * 只有 plain object 才往下走。Blob / File / Date / 类型化数组本来就可克隆,
+   * 拆成键值对反而会把它们变成空对象 —— 原图会静默变成 `{}`。
+   */
+  if (!isPlainObject(raw)) return raw as T
+
+  const out: Record<string, unknown> = {}
+  for (const [key, item] of Object.entries(raw)) {
+    out[key] = stripProxy(item)
+  }
+  return out as T
+}

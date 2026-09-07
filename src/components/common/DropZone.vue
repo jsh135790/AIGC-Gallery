@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Upload, ImagePlus } from 'lucide-vue-next'
+import { ImagePlus } from 'lucide-vue-next'
 import { useI18n } from '@/composables/useI18n'
+import { useToast } from '@/composables/useToast'
 
 const { t } = useI18n()
+const { error } = useToast()
 
 const props = withDefaults(defineProps<{
   accept?: string
@@ -41,10 +43,20 @@ function handleDragLeave() {
 function handleDrop(e: DragEvent) {
   e.preventDefault()
   isDragOver.value = false
-  const files = Array.from(e.dataTransfer?.files || []).filter(f =>
-    f.type.startsWith('image/')
-  )
-  if (files.length) emit('files', files)
+  const dropped = Array.from(e.dataTransfer?.files || [])
+  /*
+   * 空 `type` 一律放过 —— 部分拖拽源(资源管理器搜索结果、某些压缩工具、
+   * Windows 上未注册扩展名)根本不给 MIME,旧的 `startsWith('image/')` 会把
+   * 真 PNG 挡在门外。容器判定是解析层用魔数做的(CLAUDE.md 的红线),
+   * 这里只需要挡明显不是图片的东西。
+   */
+  const files = dropped.filter(f => !f.type || f.type.startsWith('image/'))
+  if (files.length) {
+    emit('files', files)
+  } else if (dropped.length) {
+    // 全被过滤掉时必须出声:同一个文件点击选择能进、拖进来无声消失最难排查
+    error(t('dropzone.rejected'))
+  }
 }
 
 function handleClick() {

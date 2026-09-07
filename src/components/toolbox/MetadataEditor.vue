@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
-import { ChevronDown, Database, Download, Hash, RotateCcw, TriangleAlert } from 'lucide-vue-next'
+import { ChevronDown, Database, Download, Hash, RotateCcw, TriangleAlert, Users, X } from 'lucide-vue-next'
 import { useI18n } from '@/composables/useI18n'
 import {
   cloneParsedMetadata,
@@ -11,7 +11,9 @@ import {
 import { useAigcStore } from '@/stores/aigcStore'
 import { useToast } from '@/composables/useToast'
 import { parseImageMetadata } from '@/lib/parser'
+import { DERIVED_FIELDS } from '@/lib/parser/fields'
 import { MetadataWriteError, writePNGMetadata } from '@/lib/parser/png-writer'
+import { downloadBlob } from '@/lib/download'
 import type { ImageSource } from '@/types'
 import { Button } from '@/components/ui/button'
 import {
@@ -44,8 +46,10 @@ const {
   changedFields,
   isDirty,
   setEditingImage,
+  clearSession,
   resetAll,
   revertField,
+  commitAsOriginal,
 } = useMetadataEditor()
 
 /** 已知字段的规范拼写。参数名不翻译 —— 它们就是文件里那些键 */
@@ -68,9 +72,6 @@ const CORE_PARAM_FIELDS = ['steps', 'sampler', 'cfgScale', 'seed', 'size', 'mode
 /** 值来自独立 tEXt chunk(原样透传),在这里改不会写进 Comment JSON */
 const LOCKED_PARAM_FIELDS = new Set(['source', 'generation_time'])
 
-/** 只给 UI 看的派生字段 */
-const DERIVED_PARAM_FIELDS = new Set(['nodeCount', 'nodeTypes'])
-
 const NOTICE_TONE_CLASS = {
   bad: 'bg-destructive/10 text-destructive',
   warn: 'bg-warning/10 text-warning',
@@ -80,7 +81,7 @@ const NOTICE_TONE_CLASS = {
 const imageUrl = ref('')
 const lightboxOpen = ref(false)
 const busy = ref(false)
-const confirmMode = ref<'reset' | 'replace' | null>(null)
+const confirmMode = ref<'reset' | 'replace' | 'close' | null>(null)
 const pendingFile = ref<File | null>(null)
 
 /*
@@ -177,15 +178,21 @@ const paramRows = computed<ParamRow[]>(() => {
   }
 
   for (const [field, value] of Object.entries(params)) {
-    if (seen.has(field) || DERIVED_PARAM_FIELDS.has(field)) continue
+    if (seen.has(field) || DERIVED_FIELDS.has(field)) continue
     if (value === undefined || value === null || value === '') continue
     const known = KNOWN_PARAM_LABELS[field]
+    /*
+     * 数组 / 对象型字段(NAI 的 reference_strength_multiple: [0.6] 之类)显示成 JSON,
+     * 也只接受 JSON —— 写侧按原值的类型透传,填成裸串会把数组变成字符串。
+     */
+    const isJson = typeof value === 'object' && value !== null
     rows.push({
       key: field,
       label: known ?? field,
       value: toText(value),
       kind: known ? 'known' : 'extra',
       locked: LOCKED_PARAM_FIELDS.has(field),
+      ...(isJson ? { hint: 'metadata.editor.jsonFieldHint' } : {}),
     })
   }
 
@@ -223,7 +230,11 @@ const exportTargets = computed<Array<{ target: ImageSource; label: string }>>(()
     ]
   : [{ target: source.value, label: t('metadata.editor.exportPng') }])
 
-/** 用原始值当类型参照:清空再重填时类型不会来回跳 */
+/**
+ * 用原始值当类型参照:清空再重填时类型不会来回跳。
+ *
+ * 只在**提交**(change / blur)时调用。编辑途中直接存原始字符串 —— 见 setParam。
+ */
 function coerceParam(raw: string, reference: unknown): unknown {
   if (raw === '') return ''
   if (typeof reference === 'number') {
@@ -234,13 +245,33 @@ function coerceParam(raw: string, reference: unknown): unknown {
     if (raw === 'true') return true
     if (raw === 'false') return false
   }
+  /*
+   * 数组 / 对象型字段必须解析回容器。原样存字符串的话,写侧 `kindOf` 看原 Comment 值
+   * 是 raw 就把它照抄进 JSON —— `[0.6]` 会变成字符串 `"[0.7]"`,类型当场退化。
+   * 解析不了就保留原值:半截 JSON 是正常的中途状态,不该覆盖掉一个好值。
+   */
+  if (typeof reference === 'object' && reference !== null) {
+    try {
+      return JSON.parse(raw) as unknown
+    } catch {
+      return reference
+    }
+  }
   return raw
 }
 
-function setParam(key: string, raw: string) {
+/*
+ * `commit` 为假(编辑途中)时**原样存字符串**,不做规范化。
+ *
+ * 立刻数值化会让 `7.5` 退一格变成 `7`,回流把输入框改写成 `7`、光标弹到末尾,
+ * 再敲一个字符就得到 `78` 并写进文件。规范化推迟到 change / blur(见 MetadataParamsRail)。
+ */
+function setParam(key: string, raw: string, commit: boolean) {
   const current = session.value
   if (!current) return
-  current.metadata.parameters[key] = coerceParam(raw, current.originalMetadata.parameters[key])
+  current.metadata.parameters[key] = commit
+    ? coerceParam(raw, current.originalMetadata.parameters[key])
+    : raw
 }
 
 function setCharacter(idx: number, field: 'prompt' | 'negative', value: string) {
@@ -249,15 +280,21 @@ function setCharacter(idx: number, field: 'prompt' | 'negative', value: string) 
 }
 
 async function loadFile(file: File) {
-  if (file.type !== 'image/png') {
-    error(t('metadata.editor.onlyPng'))
-    return
-  }
-
   let parseUrl = ''
   try {
     parseUrl = URL.createObjectURL(file)
     const parsed = await parseImageMetadata(file, parseUrl)
+
+    /*
+     * 容器判定用魔数,不看 `file.type` —— 拖拽源常常不带 MIME,`file.type !== 'image/png'`
+     * 会把一张真 PNG 原地挡掉(点击选择却能进,同一个文件两种结果)。
+     * sniffContainer 已经在 parseImageMetadata 内部跑过,这里只读它的结论。
+     */
+    if (parsed.diagnostics?.container !== 'png') {
+      error(t('metadata.editor.onlyPng'))
+      return
+    }
+
     setEditingImage({
       filename: file.name,
       blob: file,
@@ -288,6 +325,15 @@ function requestReplace(file: File) {
   void loadFile(file)
 }
 
+/** 清空回空态。干净时直接走,不为一次无损操作弹窗 */
+function requestClose() {
+  if (isDirty.value) {
+    confirmMode.value = 'close'
+    return
+  }
+  clearSession()
+}
+
 function cancelConfirm() {
   confirmMode.value = null
   pendingFile.value = null
@@ -303,28 +349,40 @@ function acceptConfirm() {
     return
   }
 
+  if (mode === 'close') {
+    pendingFile.value = null
+    clearSession()
+    return
+  }
+
   const file = pendingFile.value
   pendingFile.value = null
   if (file) void loadFile(file)
 }
 
+const confirmCopy = computed(() => {
+  const count = String(changedFields.value.length)
+  if (confirmMode.value === 'replace') {
+    return {
+      title: t('metadata.editor.confirmReplaceTitle', { count }),
+      body: t('metadata.editor.confirmReplaceBody'),
+    }
+  }
+  if (confirmMode.value === 'close') {
+    return {
+      title: t('metadata.editor.confirmCloseTitle', { count }),
+      body: t('metadata.editor.confirmCloseBody'),
+    }
+  }
+  return {
+    title: t('metadata.editor.confirmResetTitle', { count }),
+    body: t('metadata.editor.confirmResetBody'),
+  }
+})
+
 function exportFilename(name: string): string {
   const base = name.replace(/\.png$/i, '') || 'image'
   return `${base}_edited.png`
-}
-
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = filename
-  anchor.style.display = 'none'
-  // Firefox 要求 <a> 先进 DOM 才响应 click()
-  document.body.appendChild(anchor)
-  anchor.click()
-  anchor.remove()
-  // 紧跟着 revoke 会让下载在部分浏览器上落空,挪到下一个 tick
-  setTimeout(() => URL.revokeObjectURL(url), 0)
 }
 
 function reportWriteError(err: unknown, fallbackKey: string) {
@@ -377,8 +435,12 @@ async function handleWriteBack() {
       imageData: blob,
     })
     current.blob = blob
+    /*
+     * clone 一份而不是直接挂 `reparsed`:它的 parameters / v4Data 刚交给了 store,
+     * 直接共用会让编辑器里改一个参数就顺手改了库里那一行的内存态。
+     */
     current.metadata = cloneParsedMetadata(reparsed)
-    current.originalMetadata = cloneParsedMetadata(reparsed)
+    commitAsOriginal()
     success(t('metadata.editor.writeBackDone'))
   } catch (err) {
     reportWriteError(err, 'metadata.editor.writeBackFailed')
@@ -459,6 +521,19 @@ async function handleWriteBack() {
           </p>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <!-- 清空回空态。放在最右、ghost —— 它是退出而不是一个操作档位 -->
+      <Button
+        variant="ghost"
+        size="icon"
+        class="h-7 w-7 shrink-0"
+        :disabled="busy"
+        :title="t('metadata.editor.clear')"
+        :aria-label="t('metadata.editor.clear')"
+        @click="requestClose"
+      >
+        <X class="h-3.5 w-3.5" />
+      </Button>
     </div>
 
     <!-- 三栏。lg 以下塌成单栏,整片一起滚 -->
@@ -470,6 +545,7 @@ async function handleWriteBack() {
         :filename="session.filename"
         :file-size="session.blob.size"
         :source="session.source"
+        :busy="busy"
         @expand="lightboxOpen = true"
         @pick-file="requestReplace"
       >
@@ -511,6 +587,7 @@ async function handleWriteBack() {
 
         <div v-if="characters.length" class="flex flex-col gap-2.5">
           <div class="flex items-center gap-2">
+            <Users class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <SectionLabel>{{ t('metadata.characterPrompts') }}</SectionLabel>
             <span class="hair micro ml-auto rounded-sm px-1.5 py-0.5 text-muted-foreground">
               {{ t('metadata.characterCount', { count: String(characters.length) }) }}
@@ -538,32 +615,27 @@ async function handleWriteBack() {
     </div>
   </div>
 
-  <!-- 空态 -->
-  <div v-else class="flex h-full items-center justify-center p-4 md:p-6">
-    <div class="w-full max-w-lg">
-      <DropZone
-        accept="image/png"
-        :multiple="false"
-        :label="t('metadata.editor.uploadHint')"
-        :sublabel="t('metadata.editor.uploadSublabel')"
-        @files="files => loadFile(files[0])"
-      />
-    </div>
+  <!--
+    空态。与查看器同形(mx-auto max-w-5xl,顶部对齐)—— 之前这里是 h-full 垂直居中,
+    在工具箱里来回切两个工具时上传框会上下跳。内边距交给 AppShell:载入图之后才是
+    三栏工作台,Toolbox 的 padded 跟着 session 走。
+  -->
+  <div v-else class="mx-auto flex max-w-5xl flex-col gap-4">
+    <DropZone
+      accept="image/png"
+      :multiple="false"
+      :label="t('metadata.editor.uploadHint')"
+      :sublabel="t('metadata.editor.uploadSublabel')"
+      @files="files => loadFile(files[0])"
+    />
+    <p class="micro leading-relaxed">{{ t('metadata.editor.intro') }}</p>
   </div>
 
   <Dialog :open="confirmMode !== null" @update:open="value => !value && cancelConfirm()">
     <DialogContent class="w-[calc(100vw-2rem)] max-w-sm">
       <DialogHeader>
-        <DialogTitle>
-          {{ confirmMode === 'replace'
-            ? t('metadata.editor.confirmReplaceTitle', { count: String(changedFields.length) })
-            : t('metadata.editor.confirmResetTitle', { count: String(changedFields.length) }) }}
-        </DialogTitle>
-        <DialogDescription>
-          {{ confirmMode === 'replace'
-            ? t('metadata.editor.confirmReplaceBody')
-            : t('metadata.editor.confirmResetBody') }}
-        </DialogDescription>
+        <DialogTitle>{{ confirmCopy.title }}</DialogTitle>
+        <DialogDescription>{{ confirmCopy.body }}</DialogDescription>
       </DialogHeader>
       <DialogFooter>
         <Button variant="outline" @click="cancelConfirm">{{ t('common.cancel') }}</Button>

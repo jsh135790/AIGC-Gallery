@@ -230,8 +230,14 @@ class DataReader {
 /**
  * Extract Stealth PNG metadata hidden in the alpha channel.
  * NovelAI hides metadata using LSB steganography in the alpha channel.
+ *
+ * 解码失败会经 `report` 如实报出来 —— 返回 null 同时意味着"没有隐写数据",
+ * 两者混在一起时用户看到的是「这张图没有元数据」,而真相是「有,但读坏了」。
  */
-export async function extractStealthPng(imageSrc: string): Promise<Record<string, string> | null> {
+export async function extractStealthPng(
+  imageSrc: string,
+  report?: ParseReport
+): Promise<Record<string, string> | null> {
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d', { willReadFrequently: true, alpha: true })!
   const img = new Image()
@@ -269,11 +275,22 @@ export async function extractStealthPng(imageSrc: string): Promise<Record<string
 
   try {
     const dataLength = reader.readInt32()
-    const gzipData = reader.readNBytes(dataLength / 8)
+    /*
+     * 位长按规范是 8 的倍数,现实里见过不对齐的。旧代码 `readNBytes(dataLength / 8)`
+     * 会要求读小数个字节:循环里那次越界的 readBit 返回 undefined,`undefined << 7`
+     * 静默贡献 0,末字节被写坏 → pako.ungzip 抛错 → catch 返回 null,对外表现成
+     * 「这张图没有元数据」。向上取整,并把不对齐如实报出来。
+     */
+    if (dataLength % 8 !== 0) {
+      report?.unconsumedKeys.push(`stealth:bit-length-unaligned:${dataLength}`)
+    }
+    const gzipData = reader.readNBytes(Math.ceil(dataLength / 8))
     const data = pako.ungzip(new Uint8Array(gzipData))
     const jsonString = new TextDecoder().decode(new Uint8Array(data))
     return JSON.parse(jsonString)
   } catch {
+    // 魔数已经对上了,所以这里是"有隐写数据但解不开",不是"没有"
+    report?.unconsumedKeys.push('stealth:decode-failed')
     return null
   }
 }

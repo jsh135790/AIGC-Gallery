@@ -28,6 +28,12 @@ const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
 
 const TEXT_CHUNK_NAMES = new Set(['tEXt', 'zTXt', 'iTXt'])
 
+/** png-chunks-extract / -encode 两侧共用的 chunk 形状。读写各声明一份就会分叉 */
+export interface PngChunkLike {
+  name: string
+  data: Uint8Array
+}
+
 /**
  * 按魔数判断容器类型。不能信 `file.type` —— 某些拖拽源不带 MIME,
  * 也有把 PNG 标成 image/jpeg 的,旧实现因此整张图一个字段都不解析。
@@ -136,7 +142,7 @@ function decodeITXt(data: Uint8Array): Omit<RawMetadataEntry, 'entryType' | 'byt
  */
 export async function readPngTextEntries(file: Blob): Promise<RawMetadataEntry[]> {
   const buffer = await file.arrayBuffer()
-  let chunks: Array<{ name: string; data: Uint8Array }>
+  let chunks: PngChunkLike[]
 
   try {
     chunks = extractChunks(new Uint8Array(buffer))
@@ -162,32 +168,129 @@ export async function readPngTextEntries(file: Blob): Promise<RawMetadataEntry[]
   return entries
 }
 
-/** 兼容旧调用点的别名。返回值结构上仍是 PngTextChunk[] */
-export const extractPngTextChunks = readPngTextEntries
-
-/** 按魔数分容器读取原始条目。目前只有 PNG 有条目级读取 */
+/**
+ * 按魔数分容器读取原始条目。
+ *
+ * JPEG / WebP / AVIF 也产出真正的条目(只有 UserComment 一条)—— 查看器的第一层
+ * 因此对这些容器不再是空的,第三层也能报出编码回退与 JIS 不支持。
+ * 「容器 → 条目」这个形状是刻意的:加 eXIf / XMP 时不用改任何调用方。
+ */
 export async function readMetadataContainer(file: Blob): Promise<MetadataContainer> {
   const head = new Uint8Array(await file.slice(0, 16).arrayBuffer())
   const kind = sniffContainer(head)
-  if (kind !== 'png') return { kind, entries: [] }
-  return { kind, entries: await readPngTextEntries(file) }
+  if (kind === 'png') return { kind, entries: await readPngTextEntries(file) }
+  if (kind === 'jpeg' || kind === 'webp' || kind === 'avif') {
+    const entry = await readExifUserComment(file)
+    return { kind, entries: entry ? [entry] : [] }
+  }
+  return { kind, entries: [] }
+}
+
+// ===== EXIF UserComment =====
+
+/** 8 字节字符集指示符 */
+const CC_UNICODE = [0x55, 0x4e, 0x49, 0x43, 0x4f, 0x44, 0x45, 0x00]   // "UNICODE\0"
+const CC_ASCII = [0x41, 0x53, 0x43, 0x49, 0x49, 0x00, 0x00, 0x00]     // "ASCII\0\0\0"
+const CC_JIS = [0x4a, 0x49, 0x53, 0x00, 0x00, 0x00, 0x00, 0x00]       // "JIS\0\0\0\0\0"
+const CC_UNDEFINED = [0, 0, 0, 0, 0, 0, 0, 0]
+
+/**
+ * 解码 EXIF UserComment 的原始字节。
+ *
+ * 必须自己解,**不能**用 exifreader 的 `.description`:它对 `UNICODE\0` 直接返回字面串
+ * `'[Unicode encoded text]'`,而 A1111 走的正是这一支(见 exifreader 的 tag-names-utils)。
+ *
+ * 三处旧坑:
+ *  1. 不看指示符 + 逐字节 `String.fromCodePoint` —— UTF-16BE 的中文提示词全成乱码,
+ *     只有纯 ASCII 侥幸对(高位字节是 0x00,再被无差别剥 NUL 抹掉)。
+ *  2. `.slice(7)` 是按剥完 NUL 的 `"UNICODE"` 长度硬编码的,遇到 `ASCII\0\0\0`(剥完剩 5)
+ *     会吃掉正文头两个字符。
+ *  3. `String.fromCodePoint(...bytes)` 逐字节展开实参,长 comment 触发 RangeError,
+ *     被外层 catch 吞掉 → 整份元数据静默消失。
+ *
+ * 全程用 TextDecoder,不展开实参。
+ */
+export function decodeUserComment(bytes: Uint8Array): { text: string; status: EntryDecodeStatus } {
+  // 不足 8 字节:没有指示符可言,按无指示符的文本处理
+  if (bytes.length < 8) return decodeCommentText(bytes)
+
+  const designator = bytes.slice(0, 8)
+  const payload = bytes.slice(8)
+
+  if (matches(designator, CC_UNICODE)) {
+    return { text: stripTrailingNulls(decodeUtf16(payload)), status: 'ok' }
+  }
+
+  if (matches(designator, CC_JIS)) {
+    // JIS X0208 需要一张码表,本 app 不带。如实报损坏,而不是吐一串乱码
+    return { text: '', status: 'malformed' }
+  }
+
+  /*
+   * ASCII / 未定义:先按严格 UTF-8 解。指示符写着 ASCII 但正文是 UTF-8 的构建不少
+   * (piexif 的默认分支),回退 Latin-1 时把这件事记进 status —— 与 PNG 路径同口径。
+   */
+  if (matches(designator, CC_ASCII) || matches(designator, CC_UNDEFINED)) {
+    return decodeCommentText(payload)
+  }
+
+  // 认不出的指示符:整段(含那 8 字节)当文本试,信息一点都不丢
+  return decodeCommentText(bytes)
+}
+
+function matches(bytes: Uint8Array, expected: number[]): boolean {
+  return expected.every((byte, i) => bytes[i] === byte)
+}
+
+function decodeCommentText(bytes: Uint8Array): { text: string; status: EntryDecodeStatus } {
+  const decoded = decodeText(bytes)
+  return { text: stripTrailingNulls(decoded.text), status: decoded.status }
 }
 
 /**
- * Read EXIF UserComment from JPEG/WebP/AVIF files using ExifReader.
- * 只读了 UserComment 一个标签,完整 EXIF / XMP 是二期的事。
+ * UTF-16。EXIF 规范说大端,但有 BOM 就听 BOM —— 部分 Windows 工具写小端 + BOM,
+ * 按规范硬解会得到每个字都错位一格的"半个乱码",比整段乱码更难被认出来。
  */
-export async function extractExifMetadata(file: Blob): Promise<string | null> {
+function decodeUtf16(bytes: Uint8Array): string {
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) {
+    return new TextDecoder('utf-16le').decode(bytes.slice(2))
+  }
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) {
+    return new TextDecoder('utf-16be').decode(bytes.slice(2))
+  }
+  return new TextDecoder('utf-16be').decode(bytes)
+}
+
+/** 只剥尾部填充 NUL。旧实现无差别剥掉所有 NUL,正是 UTF-16 被解坏的原因 */
+function stripTrailingNulls(text: string): string {
+  return text.replace(/\0+$/, '')
+}
+
+/**
+ * 读 JPEG/WebP/AVIF 的 EXIF UserComment,产出一条 `RawMetadataEntry`。
+ * 只读了 UserComment 一个标签,完整 EXIF / XMP 是二期的事(查看器会明说这一点)。
+ */
+export async function readExifUserComment(file: Blob): Promise<RawMetadataEntry | null> {
   try {
     const ExifReader = await import('exifreader')
     // 传 ArrayBuffer 而不是 File:回补流程拿到的是库里的 Blob,没有 File 的 name/lastModified
     const data = ExifReader.load(await file.arrayBuffer()) as Record<string, { value?: unknown }>
-    if (data.UserComment?.value) {
-      return String.fromCodePoint(...(data.UserComment.value as number[]))
-        .replace(/\x00/g, '')
-        .slice(7) // Skip "UNICODE" prefix
+    const value = data.UserComment?.value
+    if (value === undefined || value === null) return null
+
+    // UNDEFINED 型标签 exifreader 给字节数组;个别路径已经给了字符串
+    const bytes = Array.isArray(value)
+      ? new Uint8Array(value as number[])
+      : new TextEncoder().encode(String(value))
+
+    const { text, status } = decodeUserComment(bytes)
+    return {
+      keyword: 'UserComment',
+      text,
+      entryType: 'eXIf',
+      byteLength: bytes.length,
+      status,
     }
-    return null
   } catch {
     return null
   }

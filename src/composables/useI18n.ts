@@ -1,4 +1,4 @@
-import { ref, computed, watch } from 'vue'
+import { ref } from 'vue'
 
 export type Locale = 'zh-CN' | 'en'
 
@@ -40,32 +40,35 @@ const messages: Record<Locale, Record<string, string>> = {
     // About dialog
     'about.title': '关于 AIGC Gallery',
     'about.description': '本地 AI 生成图片管理工具',
-    'about.feedbackGroup': '反馈/交流群：',
+    'about.feedbackGroup': '反馈/交流群',
     'about.tabSettings': '功能设置',
     'about.tabAuthor': '关于作者',
+    'about.authorEyebrow': '作者',
+    'about.homepage': '主页',
+    'about.repository': '仓库',
+    'about.version': '版本',
 
     // Settings
     'settings.global': '全局',
     'settings.artistGallery': '画师串画廊',
+    'settings.aigcManager': 'AIGC 图库',
     'settings.blurEffect': '模糊效果',
     'settings.accentColor': '主题色',
     'settings.autoFillName': '上传图片自动填入文件名',
     'settings.autoFillPrefix': '自动补充画师串前缀',
     'settings.autoFillPrefixHint': '需先启用「上传图片自动填入文件名」',
     'settings.customPrefix': '自定义画师串前缀',
+    'settings.autoParseTags': '上传时自动解析 Tag',
 
     // Common
-    'common.search': '搜索',
     'common.searchPlaceholder': '搜索...',
     'common.cancel': '取消',
     'common.save': '保存',
     'common.delete': '删除',
     'common.create': '创建',
-    'common.edit': '编辑',
     'common.copy': '复制',
     'common.close': '关闭',
     'common.confirm': '确认',
-    'common.all': '全部',
     'common.favorites': '收藏',
     'common.more': '更多',
     'common.sort': '排序',
@@ -75,10 +78,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'common.deselectAll': '取消全选',
     'common.rename': '重命名',
     'common.copied': '已复制',
-    'common.scrollLeft': '向左滚动',
-    'common.scrollRight': '向右滚动',
     'common.toggleSidebar': '切换侧边栏',
-    'common.empty': '空空如也',
 
     // Artist Gallery
     'artist.searchPlaceholder': '搜索画师名称、画师串或标签...',
@@ -110,6 +110,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'artist.added': '画师已添加',
     'artist.deleted': '画师已删除',
     'artist.exportSuccess': '已导出',
+    'artist.exportFailed': '导出失败',
     'artist.importSuccess': '数据导入成功',
     'artist.importFailed': '导入失败，请检查文件格式',
     'artist.copyPrompt': '复制画师串',
@@ -120,7 +121,6 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Artist Pages
     'artistPage.title': '分组',
-    'artistPage.default': '默认分组',
     'artistPage.newPage': '新建分组',
     'artistPage.editPage': '编辑分组',
     'artistPage.deletePage': '删除分组',
@@ -162,7 +162,6 @@ const messages: Record<Locale, Record<string, string>> = {
     'aigc.sortFilename': '文件名 A-Z',
     'aigc.deleteSelected': '删除 ({count})',
     'aigc.uploadSuccess': '成功上传 {count} 张图片',
-    'aigc.uploadFailed': '处理 {filename} 失败',
     'aigc.uploadPartial': '成功上传 {success} 张图片，{failed} 张处理失败',
     'aigc.uploadAllFailed': '{count} 张图片上传失败',
     'aigc.loadFailed': '图片库加载失败',
@@ -182,6 +181,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'detail.tags': '标签',
     'detail.noTags': '暂无标签',
     'detail.addTag': '添加标签',
+    'detail.filterByTag': '按此标签筛选图库',
     'detail.moveToFolder': '移动到分类',
     'detail.selectFolder': '选择分类...',
     'detail.deleteImage': '删除图片',
@@ -214,6 +214,7 @@ const messages: Record<Locale, Record<string, string>> = {
     // Drop Zone
     'dropzone.label': '拖拽图片到此处上传',
     'dropzone.sublabel': '或点击选择文件 · 支持 PNG / JPEG / WebP',
+    'dropzone.rejected': '拖进来的不是图片文件',
 
     // Theme
     'theme.toggle': '切换主题',
@@ -230,10 +231,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'toolbox.title': '工具箱',
     'toolbox.metadataEditor': '元数据修改',
     'toolbox.metadataEditorDesc': '编辑图片的 AIGC 元数据',
-    'toolbox.naiToSd': 'NAI 转 SD 提示词',
-    'toolbox.naiToSdDesc': '将 NovelAI 提示词转换为 Stable Diffusion 格式',
-    'toolbox.sdToNai': 'SD 转 NAI 提示词',
-    'toolbox.sdToNaiDesc': '将 Stable Diffusion 提示词转换为 NovelAI 格式',
+    'toolbox.metadataInspector': '元数据查看器',
+    'toolbox.metadataInspectorDesc': '看清图片里真实存在的所有元数据块',
     'toolbox.imgToPrompt': 'IMG to Prompt',
     'toolbox.imgToPromptDesc': '从图片反推生成提示词',
     'toolbox.wip': '功能开发中,敬请期待',
@@ -247,6 +246,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'metadata.editor.uploadHint': '拖拽或点击上传 PNG 图片',
     'metadata.editor.uploadSublabel': '仅支持 PNG · SD WebUI / NovelAI 可写回',
     'metadata.editor.onlyPng': '仅支持 PNG 格式',
+    'metadata.editor.intro': '读出图片里的提示词与生成参数,改完可导出成新 PNG 或回写图库。原始字段逐字保留,只替换你真的改过的那几个;ComfyUI 只能读不能写。',
     // 三栏工作台
     'metadata.editor.meter': '{tags} tags · {chars} 字',
     'metadata.editor.promptPlaceholder': '按逗号分隔的提示词…',
@@ -261,6 +261,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'metadata.editor.extraFieldsHint': '解析器兜住的字段,导出时逐字保留',
     'metadata.editor.lockedField': '来自独立元数据块,导出时原样保留;在此修改不会写入',
     'metadata.editor.lockedModelNai': 'NovelAI 把模型名放在下方只读的 SOURCE 里,导出时原样保留;此处不可改',
+    'metadata.editor.jsonFieldHint': '这个字段的值是 JSON(数组 / 对象),必须填合法 JSON 才会生效,否则保留原值',
     'metadata.editor.diffTitle': '原图对照',
     'metadata.editor.diffClean': '与原始元数据一致',
     'metadata.editor.diffChanged': '已改',
@@ -286,7 +287,84 @@ const messages: Record<Locale, Record<string, string>> = {
     'metadata.editor.confirmResetBody': '所有字段回到载入时的原始元数据,此操作不可撤销。',
     'metadata.editor.confirmReplaceTitle': '放弃 {count} 处改动并换图?',
     'metadata.editor.confirmReplaceBody': '当前编辑内容不会保留,换图后从新文件的原始元数据开始。',
+    'metadata.editor.clear': '清空',
+    'metadata.editor.confirmCloseTitle': '关闭并丢弃 {count} 处改动?',
+    'metadata.editor.confirmCloseBody': '图片本身也会一起丢掉 —— 它只活在内存里,没有存进图库。关掉之后要重新拖一次文件。',
     'detail.editMetadata': '编辑元数据',
+    'detail.viewRawMetadata': '查看原始元数据',
+
+    // Metadata Inspector — 只读查看器,三层:原始条目 / 解析后字段 / 诊断
+    'inspector.modeSingle': '单图检查',
+    'inspector.modeLibrary': '全库扫描',
+    'inspector.dropLabel': '拖拽或点击上传图片',
+    'inspector.dropSublabel': 'PNG 读取全部文本块 · JPEG/WebP/AVIF 仅读 EXIF',
+    'inspector.intro': '这里只读不写。它把容器里真实存在的元数据摊开,再告诉你当前解析器接住了哪些、漏掉了哪些 —— 上游改字段名时,先看这里。',
+    'inspector.clear': '清空',
+    'inspector.partialContainer': '此容器只读取了 EXIF UserComment,未做完整 EXIF / XMP 解析,所以下方条目表不代表文件里的全部元数据。',
+    'inspector.parseFailed': '解析失败',
+    'inspector.imageMissing': '这张图的原始文件已不在库里',
+    // 层 1
+    'inspector.rawEntries': '原始元数据块',
+    'inspector.noEntries': '没有任何文本块',
+    'inspector.emptyKeyword': '(空 keyword)',
+    'inspector.emptyPayload': '(空内容)',
+    'inspector.unconsumed': '未使用',
+    'inspector.unconsumedHint': '这个块的内容没有被任何解析器消费,只保留在原始文本里',
+    // 层 2
+    'inspector.parsedFields': '解析结果',
+    'inspector.noParams': '没有解析出任何参数',
+    'inspector.rawText': '原始文本 (rawText)',
+    // 层 3
+    'inspector.diagnostics': '诊断',
+    'inspector.matchedBy': '识别分支',
+    'inspector.container': '容器',
+    'inspector.entryCount': '元数据块数',
+    'inspector.decodeIssues': '解码异常',
+    'inspector.unconsumedKeys': '未被消费的键',
+    'inspector.unconsumedExplain': '这些键读到了但没进入解析结果。上游改名或新增字段会先出现在这里 —— 需要接住的话,得在解析器里加映射,系统不会替你猜。',
+    'inspector.stealthNote': '元数据藏在 alpha 通道(NovelAI 隐写)。标准元数据块里没有这份数据,写回也不会更新它。',
+    'inspector.diagnosticsClean': '全部块解码正常,没有被丢弃的键。',
+    // 块解码状态
+    'inspector.status.ok': '正常',
+    'inspector.status.encodingFallback': '编码回退',
+    'inspector.status.decompressFailed': '解压失败',
+    'inspector.status.malformed': '格式损坏',
+    // 识别分支
+    'inspector.matched.sdParameters': 'SD · parameters 块',
+    'inspector.matched.sdHeuristic': 'SD · 单块推断',
+    'inspector.matched.sdConcatenated': 'SD · 多块拼接兜底',
+    'inspector.matched.sdExif': 'SD · EXIF UserComment',
+    'inspector.matched.naiChunks': 'NovelAI · Description + Comment',
+    'inspector.matched.naiStealth': 'NovelAI · alpha 通道隐写',
+    'inspector.matched.comfyWorkflow': 'ComfyUI · 完整工作流',
+    'inspector.matched.comfyApi': 'ComfyUI · API 格式',
+    'inspector.matched.exifUnparsed': 'EXIF UserComment · 未能识别格式',
+    'inspector.matched.exifNone': 'EXIF · 没有 UserComment',
+    'inspector.matched.none': '未匹配任何已知格式',
+    'inspector.matched.unknownContainer': '无法识别的容器格式',
+    // 全库扫描
+    'inspector.scanTitle': '全库扫描',
+    'inspector.scanHint': '逐张重新解析原始文件,与库里存的字段对比。扫描只读,不写任何数据。',
+    'inspector.runScan': '开始扫描',
+    'inspector.libraryLoading': '正在读取图库…',
+    'inspector.libraryEmpty': '图库里还没有图片',
+    'inspector.runBackfill': '回补元数据',
+    'inspector.backfillSafety': '回补只补不覆盖:只填当前为空的参数、修正原始文本与来源标记。提示词、标签、收藏、文件夹一律不动。',
+    'inspector.scanned': '已扫描',
+    'inspector.affected': '受影响',
+    'inspector.allClean': '所有图片的元数据都与当前解析器一致。',
+    'inspector.scanFailed': '扫描失败',
+    'inspector.backfillDone': '已回补 {n} 张',
+    'inspector.backfillPartial': '已回补 {n} 张,{failed} 张写入失败(详见控制台)',
+    'inspector.backfillFailed': '回补失败',
+    // 问题类型
+    'inspector.issue.decodeFailed': '有块解不开',
+    'inspector.issue.encodingFallback': '编码回退',
+    'inspector.issue.rawMismatch': '原始文本不一致',
+    'inspector.issue.missingParams': '参数缺失',
+    'inspector.issue.stealthUnflagged': '隐写未标记',
+    'inspector.issue.sourceMismatch': '来源可升级',
+    'inspector.issue.missingV4': 'v4 数据缺失',
   },
   'en': {
     // Navigation
@@ -298,32 +376,35 @@ const messages: Record<Locale, Record<string, string>> = {
     // About dialog
     'about.title': 'About AIGC Gallery',
     'about.description': 'Local AI-generated image management tool',
-    'about.feedbackGroup': 'Feedback/Discussion:',
+    'about.feedbackGroup': 'Feedback Group',
     'about.tabSettings': 'Settings',
     'about.tabAuthor': 'About Author',
+    'about.authorEyebrow': 'Author',
+    'about.homepage': 'Homepage',
+    'about.repository': 'Repository',
+    'about.version': 'Version',
 
     // Settings
     'settings.global': 'Global',
     'settings.artistGallery': 'Artist Gallery',
+    'settings.aigcManager': 'AIGC Library',
     'settings.blurEffect': 'Blur Effect',
     'settings.accentColor': 'Accent Color',
     'settings.autoFillName': 'Auto-fill filename on upload',
     'settings.autoFillPrefix': 'Auto-fill artist prompt prefix',
     'settings.autoFillPrefixHint': 'Requires "Auto-fill filename" to be enabled',
     'settings.customPrefix': 'Custom prompt prefix',
+    'settings.autoParseTags': 'Auto-extract tags on upload',
 
     // Common
-    'common.search': 'Search',
     'common.searchPlaceholder': 'Search...',
     'common.cancel': 'Cancel',
     'common.save': 'Save',
     'common.delete': 'Delete',
     'common.create': 'Create',
-    'common.edit': 'Edit',
     'common.copy': 'Copy',
     'common.close': 'Close',
     'common.confirm': 'Confirm',
-    'common.all': 'All',
     'common.favorites': 'Favorites',
     'common.more': 'More',
     'common.sort': 'Sort',
@@ -333,10 +414,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'common.deselectAll': 'Deselect All',
     'common.rename': 'Rename',
     'common.copied': 'Copied',
-    'common.scrollLeft': 'Scroll left',
-    'common.scrollRight': 'Scroll right',
     'common.toggleSidebar': 'Toggle sidebar',
-    'common.empty': 'Nothing here',
 
     // Artist Gallery
     'artist.searchPlaceholder': 'Search artist name, prompt or tags...',
@@ -368,6 +446,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'artist.added': 'Artist added',
     'artist.deleted': 'Artist deleted',
     'artist.exportSuccess': 'Exported',
+    'artist.exportFailed': 'Export failed',
     'artist.importSuccess': 'Data imported successfully',
     'artist.importFailed': 'Import failed, please check file format',
     'artist.copyPrompt': 'Copy prompt',
@@ -378,7 +457,6 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Artist Pages
     'artistPage.title': 'Group',
-    'artistPage.default': 'Default',
     'artistPage.newPage': 'New Group',
     'artistPage.editPage': 'Edit Group',
     'artistPage.deletePage': 'Delete Group',
@@ -420,7 +498,6 @@ const messages: Record<Locale, Record<string, string>> = {
     'aigc.sortFilename': 'Filename A-Z',
     'aigc.deleteSelected': 'Delete ({count})',
     'aigc.uploadSuccess': 'Successfully uploaded {count} images',
-    'aigc.uploadFailed': 'Failed to process {filename}',
     'aigc.uploadPartial': 'Uploaded {success} images; {failed} failed',
     'aigc.uploadAllFailed': 'Failed to upload {count} images',
     'aigc.loadFailed': 'Failed to load the image library',
@@ -440,6 +517,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'detail.tags': 'Tags',
     'detail.noTags': 'No tags',
     'detail.addTag': 'Add tag',
+    'detail.filterByTag': 'Filter library by this tag',
     'detail.moveToFolder': 'Move to Category',
     'detail.selectFolder': 'Select category...',
     'detail.deleteImage': 'Delete Image',
@@ -472,6 +550,7 @@ const messages: Record<Locale, Record<string, string>> = {
     // Drop Zone
     'dropzone.label': 'Drop images here to upload',
     'dropzone.sublabel': 'Or click to select files · PNG / JPEG / WebP',
+    'dropzone.rejected': 'Those are not image files',
 
     // Theme
     'theme.toggle': 'Toggle theme',
@@ -488,10 +567,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'toolbox.title': 'Toolbox',
     'toolbox.metadataEditor': 'Metadata Editor',
     'toolbox.metadataEditorDesc': 'Edit AIGC image metadata',
-    'toolbox.naiToSd': 'NAI to SD Prompt',
-    'toolbox.naiToSdDesc': 'Convert NovelAI prompts to Stable Diffusion format',
-    'toolbox.sdToNai': 'SD to NAI Prompt',
-    'toolbox.sdToNaiDesc': 'Convert Stable Diffusion prompts to NovelAI format',
+    'toolbox.metadataInspector': 'Metadata Inspector',
+    'toolbox.metadataInspectorDesc': 'See every metadata chunk that actually exists in an image',
     'toolbox.imgToPrompt': 'IMG to Prompt',
     'toolbox.imgToPromptDesc': 'Generate prompts from images',
     'toolbox.wip': 'Under development, stay tuned',
@@ -505,6 +582,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'metadata.editor.uploadHint': 'Drag or click to upload PNG image',
     'metadata.editor.uploadSublabel': 'PNG only · writable for SD WebUI / NovelAI',
     'metadata.editor.onlyPng': 'Only PNG format supported',
+    'metadata.editor.intro': 'Reads the prompts and generation parameters out of an image so you can edit them, then export a new PNG or write back to the library. Original fields are kept verbatim — only the ones you actually changed get replaced. ComfyUI is read-only.',
     // Three-pane workbench
     'metadata.editor.meter': '{tags} tags · {chars} chars',
     'metadata.editor.promptPlaceholder': 'Comma-separated prompt…',
@@ -519,6 +597,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'metadata.editor.extraFieldsHint': 'Fields the parser caught — preserved verbatim on export',
     'metadata.editor.lockedField': 'From a separate metadata chunk — preserved as-is; edits here are not written',
     'metadata.editor.lockedModelNai': 'NovelAI stores the model name in the read-only SOURCE field below; it is preserved as-is and cannot be edited here',
+    'metadata.editor.jsonFieldHint': 'This value is JSON (an array or object). Only valid JSON is applied — anything else leaves the original value untouched',
     'metadata.editor.diffTitle': 'Compare with original',
     'metadata.editor.diffClean': 'Identical to the original metadata',
     'metadata.editor.diffChanged': 'changed',
@@ -544,7 +623,84 @@ const messages: Record<Locale, Record<string, string>> = {
     'metadata.editor.confirmResetBody': 'Every field returns to the metadata as loaded. This cannot be undone.',
     'metadata.editor.confirmReplaceTitle': 'Discard {count} changes and replace the image?',
     'metadata.editor.confirmReplaceBody': 'The current edits are not kept — the new file starts from its own original metadata.',
+    'metadata.editor.clear': 'Clear',
+    'metadata.editor.confirmCloseTitle': 'Close and discard {count} changes?',
+    'metadata.editor.confirmCloseBody': 'The image goes with them — it only lives in memory and was never saved to the library. You will have to drop the file in again.',
     'detail.editMetadata': 'Edit Metadata',
+    'detail.viewRawMetadata': 'View Raw Metadata',
+
+    // Metadata Inspector — read-only, three layers: raw entries / parsed fields / diagnostics
+    'inspector.modeSingle': 'Single Image',
+    'inspector.modeLibrary': 'Library Scan',
+    'inspector.dropLabel': 'Drop or click to upload an image',
+    'inspector.dropSublabel': 'PNG reads every text chunk · JPEG/WebP/AVIF read EXIF only',
+    'inspector.intro': 'Read-only. It lays out the metadata that actually exists in the container, then tells you which of it the current parser picked up and which it dropped — check here first when an upstream tool renames a field.',
+    'inspector.clear': 'Clear',
+    'inspector.partialContainer': 'Only the EXIF UserComment tag was read for this container — no full EXIF / XMP parsing — so the entry table below is not everything in the file.',
+    'inspector.parseFailed': 'Failed to parse',
+    'inspector.imageMissing': 'The original file for this image is no longer in the library',
+    // Layer 1
+    'inspector.rawEntries': 'Raw Metadata Chunks',
+    'inspector.noEntries': 'No text chunks found',
+    'inspector.emptyKeyword': '(empty keyword)',
+    'inspector.emptyPayload': '(empty payload)',
+    'inspector.unconsumed': 'unused',
+    'inspector.unconsumedHint': 'No parser consumed this chunk — it only survives in the raw text',
+    // Layer 2
+    'inspector.parsedFields': 'Parsed Result',
+    'inspector.noParams': 'No parameters were parsed',
+    'inspector.rawText': 'Raw text (rawText)',
+    // Layer 3
+    'inspector.diagnostics': 'Diagnostics',
+    'inspector.matchedBy': 'Matched by',
+    'inspector.container': 'Container',
+    'inspector.entryCount': 'Chunk count',
+    'inspector.decodeIssues': 'Decode issues',
+    'inspector.unconsumedKeys': 'Unconsumed keys',
+    'inspector.unconsumedExplain': 'These keys were read but never made it into the parsed result. Renamed or newly added upstream fields show up here first — picking them up means adding a mapping in the parser. Nothing is guessed for you.',
+    'inspector.stealthNote': 'Metadata is hidden in the alpha channel (NovelAI stealth PNG). The standard chunks do not carry it, and writing back will not update it.',
+    'inspector.diagnosticsClean': 'Every chunk decoded cleanly and no keys were dropped.',
+    // Chunk decode status
+    'inspector.status.ok': 'ok',
+    'inspector.status.encodingFallback': 'encoding fallback',
+    'inspector.status.decompressFailed': 'decompress failed',
+    'inspector.status.malformed': 'malformed',
+    // Matched branch
+    'inspector.matched.sdParameters': 'SD · parameters chunk',
+    'inspector.matched.sdHeuristic': 'SD · single-chunk heuristic',
+    'inspector.matched.sdConcatenated': 'SD · concatenated fallback',
+    'inspector.matched.sdExif': 'SD · EXIF UserComment',
+    'inspector.matched.naiChunks': 'NovelAI · Description + Comment',
+    'inspector.matched.naiStealth': 'NovelAI · alpha-channel stealth',
+    'inspector.matched.comfyWorkflow': 'ComfyUI · full workflow',
+    'inspector.matched.comfyApi': 'ComfyUI · API format',
+    'inspector.matched.exifUnparsed': 'EXIF UserComment · format not recognized',
+    'inspector.matched.exifNone': 'EXIF · no UserComment',
+    'inspector.matched.none': 'No known format matched',
+    'inspector.matched.unknownContainer': 'Unrecognized container format',
+    // Library scan
+    'inspector.scanTitle': 'Library Scan',
+    'inspector.scanHint': 'Re-parses every original file and compares against what the library stored. The scan is read-only — it writes nothing.',
+    'inspector.runScan': 'Run Scan',
+    'inspector.libraryLoading': 'Loading the library…',
+    'inspector.libraryEmpty': 'No images in the library yet',
+    'inspector.runBackfill': 'Backfill Metadata',
+    'inspector.backfillSafety': 'Backfill only fills gaps: empty parameters, plus corrected raw text and source flags. Prompts, tags, favorites and folders are never touched.',
+    'inspector.scanned': 'Scanned',
+    'inspector.affected': 'affected',
+    'inspector.allClean': 'Every image matches what the current parser reads.',
+    'inspector.scanFailed': 'Scan failed',
+    'inspector.backfillDone': 'Backfilled {n} images',
+    'inspector.backfillPartial': 'Backfilled {n}, {failed} failed to write (see console)',
+    'inspector.backfillFailed': 'Backfill failed',
+    // Issue kinds
+    'inspector.issue.decodeFailed': 'chunk failed to decode',
+    'inspector.issue.encodingFallback': 'encoding fallback',
+    'inspector.issue.rawMismatch': 'raw text mismatch',
+    'inspector.issue.missingParams': 'missing parameters',
+    'inspector.issue.stealthUnflagged': 'stealth not flagged',
+    'inspector.issue.sourceMismatch': 'source upgradable',
+    'inspector.issue.missingV4': 'missing v4 data',
   },
 }
 
@@ -575,19 +731,6 @@ export const CATEGORY_KEYS: Record<string, string> = {
   '其他': 'category.other',
 }
 
-// Reverse mapping for saving
-export const CATEGORY_VALUES: Record<string, string> = {
-  'category.realistic': '写实',
-  'category.anime': '二次元',
-  'category.semiRealistic': '半写实',
-  'category.conceptArt': '概念艺术',
-  'category.watercolor': '水彩风',
-  'category.oilPainting': '油画风',
-  'category.illustration': '插画',
-  'category.pixelArt': '像素风',
-  'category.other': '其他',
-}
-
 export function useI18n() {
   const locale = currentLocale
 
@@ -607,11 +750,6 @@ export function useI18n() {
     document.documentElement.lang = newLocale === 'zh-CN' ? 'zh' : 'en'
   }
 
-  // Toggle between locales
-  function toggleLocale() {
-    setLocale(locale.value === 'zh-CN' ? 'en' : 'zh-CN')
-  }
-
   // Translate category (handles both directions)
   function translateCategory(category: string): string {
     // If it's a Chinese category, translate to current locale
@@ -625,37 +763,11 @@ export function useI18n() {
     return category
   }
 
-  // Get category value for storage (always Chinese)
-  function getCategoryValue(displayOrKey: string): string {
-    // If it's a translation key, get the Chinese value
-    if (CATEGORY_VALUES[displayOrKey]) {
-      return CATEGORY_VALUES[displayOrKey]
-    }
-    // If it's already Chinese, return as-is
-    if (CATEGORY_KEYS[displayOrKey]) {
-      return displayOrKey
-    }
-    // Try to find by translated value
-    for (const [zhValue, key] of Object.entries(CATEGORY_KEYS)) {
-      if (t(key) === displayOrKey) {
-        return zhValue
-      }
-    }
-    return displayOrKey
-  }
-
-  const isZh = computed(() => locale.value === 'zh-CN')
-  const isEn = computed(() => locale.value === 'en')
-
   return {
     locale,
     t,
     setLocale,
-    toggleLocale,
     translateCategory,
-    getCategoryValue,
-    isZh,
-    isEn,
   }
 }
 

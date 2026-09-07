@@ -42,5 +42,5 @@ export function useMasonryLayout(
     return cols
   })
 
-  return { columnCount, columns }
+  return { columns }
 }

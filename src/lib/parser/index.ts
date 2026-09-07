@@ -1,4 +1,4 @@
-import { readPngTextEntries, extractExifMetadata, sniffContainer } from './png-parser'
+import { readPngTextEntries, readExifUserComment, sniffContainer } from './png-parser'
 import { parseSDWebUI } from './sd-parser'
 import { parseNovelAI, parseNovelAIStealth, extractStealthPng } from './nai-parser'
 import { parseComfyUI } from './comfy-parser'
@@ -11,8 +11,7 @@ import type {
   ParseReport,
 } from '@/types'
 
-export { getTagsFromPrompt, analyzeTags, extractTags } from './tag-analyzer'
-export type { AnalyzedTag, TagCategory } from './tag-analyzer'
+export { getTagsFromPrompt, extractTags } from './tag-analyzer'
 export { readPngTextEntries, readMetadataContainer, sniffContainer } from './png-parser'
 
 /** 生产构建里不该有解析日志。诊断信息的正阵地是 diagnostics + 查看器 */
@@ -23,9 +22,11 @@ const debug: (...args: unknown[]) => void = import.meta.env.DEV
 /**
  * Main entry point: parse an image file and extract all metadata.
  * 容器判定走魔数,不看 file.type —— 某些拖拽源不带 MIME,也有把 PNG 标成 jpeg 的。
+ *
+ * 收 Blob 而不是 File:回补与查看器要重新解析库里的 imageData,那是个 Blob。
  */
 export async function parseImageMetadata(
-  file: File,
+  file: Blob,
   imageSrc?: string
 ): Promise<ParsedMetadata> {
   const head = new Uint8Array(await file.slice(0, 16).arrayBuffer())
@@ -40,7 +41,7 @@ export async function parseImageMetadata(
   return unknownResult('', { container: 'unknown', matchedBy: 'unrecognized-container', entries: [] })
 }
 
-async function parsePngMetadata(file: File, imageSrc?: string): Promise<ParsedMetadata> {
+async function parsePngMetadata(file: Blob, imageSrc?: string): Promise<ParsedMetadata> {
   const entries = await readPngTextEntries(file)
   debug('entries:', entries.map(e => ({ keyword: e.keyword, type: e.entryType, bytes: e.byteLength, status: e.status })))
 
@@ -105,11 +106,11 @@ async function parsePngMetadata(file: File, imageSrc?: string): Promise<ParsedMe
    * 旧实现只在"零文本块"时试,于是一张带任意 tEXt 的 stealth 图永远检测不到。
    */
   if (imageSrc) {
-    const stealthData = await extractStealthPng(imageSrc)
+    // 报告传进去:魔数对上但解不开时它会记一条,而不是伪装成"没有元数据"
+    const stealthData = await extractStealthPng(imageSrc, report)
     if (stealthData) {
       // 标记出来:写回只写标准 chunk,alpha 里那份不会同步,编辑器要给警告
-      const stealthReport: ParseReport = { unconsumedKeys: [] }
-      const parsed = parseNovelAIStealth(stealthData, stealthReport)
+      const parsed = parseNovelAIStealth(stealthData, report)
       return {
         ...parsed,
         stealth: true,
@@ -117,7 +118,7 @@ async function parsePngMetadata(file: File, imageSrc?: string): Promise<ParsedMe
           container: 'png',
           matchedBy: 'nai:stealth-alpha-lsb',
           entries,
-          unconsumedKeys: stealthReport.unconsumedKeys,
+          unconsumedKeys: report.unconsumedKeys,
         },
       }
     }
@@ -137,14 +138,20 @@ function reportUnconsumed(report: ParseReport, entries: RawMetadataEntry[], cons
   }
 }
 
-async function parseExifMetadata(file: File, container: MetadataContainerKind): Promise<ParsedMetadata> {
-  const text = await extractExifMetadata(file)
-  const entries: RawMetadataEntry[] = text
-    ? [{ keyword: 'UserComment', text, entryType: 'exif', byteLength: text.length, status: 'ok' }]
-    : []
+/**
+ * JPEG / WebP / AVIF:目前只读 EXIF UserComment 一个标签。
+ *
+ * 产出的是一条真正的 `RawMetadataEntry`(不是从解码后的字符串现搓一个)——
+ * 于是查看器第一层对这些容器不再是空的,`byteLength` 是真实字节数,
+ * 编码回退与 JIS 不支持也能在第三层如实报出来。
+ */
+async function parseExifMetadata(file: Blob, container: MetadataContainerKind): Promise<ParsedMetadata> {
+  const entry = await readExifUserComment(file)
+  const entries: RawMetadataEntry[] = entry ? [entry] : []
   const base = { container, entries }
+  const text = entry?.text ?? ''
 
-  if (text && text.includes('Steps:')) {
+  if (text.includes('Steps:')) {
     return { ...parseSDWebUI(text), diagnostics: { ...base, matchedBy: 'sd:exif-usercomment', unconsumedKeys: [] } }
   }
   if (text) {
@@ -157,7 +164,14 @@ async function parseExifMetadata(file: File, container: MetadataContainerKind): 
       diagnostics: { ...base, matchedBy: 'exif-usercomment-unparsed', unconsumedKeys: [] },
     }
   }
-  return unknownResult('', { ...base, matchedBy: 'exif-no-usercomment' })
+  /*
+   * 有条目但正文为空 = 读到了 UserComment 却解不开(JIS / 结构损坏)。
+   * 这跟"压根没有 UserComment"是两件事,分开报 —— 条目自己的 status 说明了原因。
+   */
+  return unknownResult('', {
+    ...base,
+    matchedBy: entry ? 'exif-usercomment-unparsed' : 'exif-no-usercomment',
+  })
 }
 
 function unknownResult(
@@ -174,6 +188,24 @@ function unknownResult(
     ...(diagnostics
       ? { diagnostics: { ...diagnostics, unconsumedKeys: report?.unconsumedKeys ?? [] } }
       : {}),
+  }
+}
+
+/**
+ * Parse a Blob with no image src on hand.
+ *
+ * 隐写检测需要一个能喂给 <img> 的地址,所以这里临时造一个 object URL 并立刻回收 ——
+ * 它不交给任何组件持有,不存在 CLAUDE.md 那条"导航前失效"的问题。
+ *
+ * 库里的 imageData 一直留着,所以任何时候都能从 blob 重新解析一遍,
+ * 不必相信库行里那些"当时那个解析器"留下的字段。
+ */
+export async function parseBlobMetadata(blob: Blob): Promise<ParsedMetadata> {
+  const url = URL.createObjectURL(blob)
+  try {
+    return await parseImageMetadata(blob, url)
+  } finally {
+    URL.revokeObjectURL(url)
   }
 }
 

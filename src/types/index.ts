@@ -154,11 +154,6 @@ export interface ParsedMetadata {
   diagnostics?: MetadataDiagnostics
 }
 
-export interface PngChunk {
-  name: string
-  data: Uint8Array
-}
-
 export interface PngTextChunk {
   keyword: string
   text: string
@@ -217,14 +212,7 @@ export interface ParseReport {
 
 // ===== UI Types =====
 
-export type SortField = 'createdAt' | 'name' | 'rating' | 'filename'
 export type SortOrder = 'asc' | 'desc'
-
-export interface SortOption {
-  field: SortField
-  order: SortOrder
-  label: string
-}
 
 export interface FolderNavItem {
   id: number | 'all' | 'uncategorized' | 'favorites'

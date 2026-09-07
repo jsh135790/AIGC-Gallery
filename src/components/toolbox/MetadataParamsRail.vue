@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { ChevronDown, ChevronRight, Undo2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import SectionLabel from '@/components/common/SectionLabel.vue'
 import { useI18n } from '@/composables/useI18n'
+import { prettify } from '@/lib/format'
 import type { ChangedField, ParamRow } from '@/composables/useMetadataEditor'
 
 /*
@@ -21,7 +22,8 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'update:param': [key: string, value: string]
+  /** `commit` = 该把字符串规范化成原字段的类型了(change / blur),编辑途中为 false */
+  'update:param': [key: string, value: string, commit: boolean]
   revert: [field: ChangedField]
 }>()
 
@@ -36,23 +38,54 @@ function toggle(key: 'extra' | 'raw' | 'diff') {
 const knownRows = computed(() => props.rows.filter(row => row.kind === 'known'))
 const extraRows = computed(() => props.rows.filter(row => row.kind === 'extra'))
 
+/*
+ * 每行一份本地草稿字符串。
+ *
+ * 直接 `:value="row.value"` + `@input` 立刻数值化会改坏小数:CFG Scale `7.5` 退一格
+ * → 父层 `Number("7.")` = 7 → 回流成 `"7"` → Vue 的 patchDOMProp 发现绑定值与 DOM 值
+ * 不一致,把输入框改写成 `7` 并把光标弹到末尾 —— 再敲 `8` 得到 `78`,而这个错数字会被
+ * 导出、被写回文件。整数字段侥幸没事(`String(Number(x)) === x`),小数字段全中。
+ *
+ * 所以编辑途中只更新草稿并把**原始字符串**抛上去,规范化推迟到 change / blur。
+ * 草稿只在父层值从外部变化时(revertField / resetAll / 换图)才重新同步。
+ */
+const drafts = ref<Record<string, string>>({})
+
+/** 上一次从 props 看到的值:用它区分"外部改了"和"我自己刚抛上去的回流" */
+let mirrored: Record<string, string> = {}
+
+watch(() => props.rows, rows => {
+  const next: Record<string, string> = {}
+  for (const row of rows) {
+    next[row.key] = row.value
+    if (mirrored[row.key] !== row.value) drafts.value[row.key] = row.value
+  }
+  // 行没了(换图 / 字段被删)就丢掉草稿,否则旧值会渗进下一个会话
+  for (const key of Object.keys(drafts.value)) {
+    if (!(key in next)) delete drafts.value[key]
+  }
+  mirrored = next
+}, { immediate: true })
+
+function draftFor(row: ParamRow): string {
+  return drafts.value[row.key] ?? row.value
+}
+
+function onEdit(row: ParamRow, event: Event, commit: boolean) {
+  const value = (event.target as HTMLInputElement).value
+  drafts.value[row.key] = value
+  emit('update:param', row.key, value, commit)
+}
+
 /** 锁定的行把原因写进 title,免得只看到一个点不动的输入框 */
 function rowTitle(row: ParamRow) {
-  return row.locked ? t(row.lockReason ?? 'metadata.editor.lockedField') : row.value
+  if (row.locked) return t(row.lockReason ?? 'metadata.editor.lockedField')
+  if (row.hint) return t(row.hint)
+  return row.value
 }
 
 /** JSON 就美化,其他(SD 的 parameters 整串)原样 */
-const prettyRaw = computed(() => {
-  const text = props.rawText
-  if (!text) return ''
-  const trimmed = text.trim()
-  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return text
-  try {
-    return JSON.stringify(JSON.parse(trimmed), null, 2)
-  } catch {
-    return text
-  }
-})
+const prettyRaw = computed(() => prettify(props.rawText))
 </script>
 
 <template>
@@ -66,12 +99,14 @@ const prettyRaw = computed(() => {
           <span class="micro shrink-0" :class="changedKeys.has(row.key) ? 'text-primary' : ''">{{ row.label }}</span>
           <input
             class="readout min-w-0 flex-1 border-b border-transparent bg-transparent px-0 py-px text-right font-mono text-2xs font-medium transition-colors hover:border-primary/70 focus:border-primary/70 disabled:opacity-45"
-            :value="row.value"
+            :value="draftFor(row)"
             :disabled="disabled || row.locked"
             :aria-label="row.label"
             :title="rowTitle(row)"
             spellcheck="false"
-            @input="emit('update:param', row.key, ($event.target as HTMLInputElement).value)"
+            @input="onEdit(row, $event, false)"
+            @change="onEdit(row, $event, true)"
+            @blur="onEdit(row, $event, true)"
           />
         </div>
       </div>
@@ -96,12 +131,14 @@ const prettyRaw = computed(() => {
           <span class="micro shrink-0" :class="changedKeys.has(row.key) ? 'text-primary' : ''">{{ row.label }}</span>
           <input
             class="readout min-w-0 flex-1 border-b border-transparent bg-transparent px-0 py-px text-right font-mono text-2xs font-medium transition-colors hover:border-primary/70 focus:border-primary/70 disabled:opacity-45"
-            :value="row.value"
+            :value="draftFor(row)"
             :disabled="disabled || row.locked"
             :aria-label="row.label"
             :title="rowTitle(row)"
             spellcheck="false"
-            @input="emit('update:param', row.key, ($event.target as HTMLInputElement).value)"
+            @input="onEdit(row, $event, false)"
+            @change="onEdit(row, $event, true)"
+            @blur="onEdit(row, $event, true)"
           />
         </div>
       </div>

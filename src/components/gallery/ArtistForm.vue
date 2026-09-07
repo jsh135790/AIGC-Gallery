@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, watch, toRaw } from 'vue'
+import { ref, reactive, watch, toRaw, onUnmounted } from 'vue'
 import { Plus, X, Trash2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -51,11 +51,21 @@ const form = reactive({
 const newTag = ref('')
 const imagePreviews = ref<string[]>([])
 
+function revokePreviews() {
+  imagePreviews.value.forEach(url => URL.revokeObjectURL(url))
+  imagePreviews.value = []
+}
+
+/*
+ * 面板本身是 v-if 卸载的:切走路由(顶栏 → /aigc)时最后一次预览 URL 没人回收,
+ * 整张原图 Blob 会活到文档结束,每开一个画师泄漏一份。
+ */
+onUnmounted(revokePreviews)
+
 // Pre-fill form when editing - watch editArtist and open state together
 watch([() => props.editArtist, () => props.open], ([artist, isOpen]) => {
   // Clean up old preview URLs
-  imagePreviews.value.forEach(url => URL.revokeObjectURL(url))
-  imagePreviews.value = []
+  revokePreviews()
 
   // Only fill form when panel is opening with an artist
   if (isOpen && artist) {
@@ -89,14 +99,13 @@ function resetForm() {
   form.thumbnails = []
   form.isFavorite = false
   form.pageId = store.selectedPageId
-  imagePreviews.value.forEach(url => URL.revokeObjectURL(url))
-  imagePreviews.value = []
+  revokePreviews()
 }
 
 function handleFiles(files: File[]) {
   const file = files[0]
   if (!file) return
-  imagePreviews.value.forEach(url => URL.revokeObjectURL(url))
+  revokePreviews()
   form.images = [file]
   imagePreviews.value = [URL.createObjectURL(file)]
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Aperture, Palette, Images, Wrench, Github, Info, MessageCircle, Sparkle, Settings, User, FileText, PenTool } from 'lucide-vue-next'
+import { Aperture, Palette, Images, Wrench, Github, Info, MessageCircle, Sparkle, Settings, User, FileText, PenTool, Tags, Copy, Check, ExternalLink, GitBranch } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -12,12 +12,15 @@ import {
 } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Switch } from '@/components/ui/switch'
+import { Separator } from '@/components/ui/separator'
 import SectionLabel from '@/components/common/SectionLabel.vue'
 import ThemeToggle from './ThemeToggle.vue'
 import LanguageToggle from './LanguageToggle.vue'
 import { useI18n } from '@/composables/useI18n'
+import { useCopyFeedback } from '@/composables/useCopyFeedback'
 import { useBlurEffect } from '@/composables/useBlurEffect'
 import { useArtistSettings } from '@/composables/useArtistSettings'
+import { useAigcSettings } from '@/composables/useAigcSettings'
 import { useAccentColor, ACCENT_PRESETS } from '@/composables/useAccentColor'
 
 const route = useRoute()
@@ -27,13 +30,32 @@ const aboutTab = ref('settings')
 const { t } = useI18n()
 const { blurEnabled, toggleBlur } = useBlurEffect()
 const { autoFillName, autoFillPrefix, customPrefix, canTogglePrefix, canEditPrefix, toggleAutoFillName, toggleAutoFillPrefix } = useArtistSettings()
+const { autoParseTags, toggleAutoParseTags } = useAigcSettings()
 const { accentColor, setAccent } = useAccentColor()
+
+/* vite.config.ts 的 define 注入,跟 package.json 同源。模板看不到全局 const,得转一手 */
+const appVersion = __APP_VERSION__
+
+const QQ_GROUP = '1046260326'
+
+/* 行内换图标而不是弹 toast —— 弹窗开着时 toast 会被遮住(见 useCopyFeedback) */
+const { copiedKey: groupCopied, copy: copyGroup } = useCopyFeedback()
 
 const navItems = computed(() => [
   { path: '/gallery', label: t('nav.artistGallery'), icon: Palette },
   { path: '/aigc', label: t('nav.aigcManager'), icon: Images },
   { path: '/toolbox', label: t('nav.toolbox'), icon: Wrench },
 ])
+
+/*
+ * 子 tab 归位放在**开启**这一侧,不能放在 @update:open 的关闭分支里。
+ * 关闭时改 aboutTab,弹窗还在播 200ms 的退场动画,于是肉眼能看到它先跳回
+ * "功能设置"再淡出 —— 从"关于作者"关闭时尤其明显。
+ */
+function openAbout() {
+  aboutTab.value = 'settings'
+  aboutOpen.value = true
+}
 
 // 主题色预设:默认(null)以琥珀 #ffb000 作为展示色点(= --primary 深色值,与主页同源)
 const accentPresets = ACCENT_PRESETS.map(p => ({
@@ -109,7 +131,7 @@ function isActiveAccent(hex: string | null) {
           variant="ghost"
           size="icon"
           class="h-9 w-9"
-          @click="aboutOpen = true"
+          @click="openAbout"
         >
           <Info class="h-4 w-4" />
           <span class="sr-only">{{ t('nav.about') }}</span>
@@ -125,7 +147,7 @@ function isActiveAccent(hex: string | null) {
   </header>
 
   <!-- About Dialog -->
-  <Dialog :open="aboutOpen" @update:open="v => { aboutOpen = v; if (!v) aboutTab = 'settings' }">
+  <Dialog v-model:open="aboutOpen">
     <DialogContent class="max-w-md w-[calc(100vw-2rem)]">
       <DialogHeader>
         <DialogTitle class="text-lg">{{ t('about.title') }}</DialogTitle>
@@ -227,36 +249,107 @@ function isActiveAccent(hex: string | null) {
               />
             </div>
           </div>
+
+          <!-- AIGC Library Settings -->
+          <div class="space-y-1.5">
+            <SectionLabel class="px-1">{{ t('settings.aigcManager') }}</SectionLabel>
+
+            <!-- Auto-extract tags on upload -->
+            <button
+              class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-xs sm:text-sm transition-colors hover:bg-accent"
+              @click="toggleAutoParseTags"
+            >
+              <div class="flex items-center gap-2">
+                <Tags class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
+                <span>{{ t('settings.autoParseTags') }}</span>
+              </div>
+              <Switch :model-value="autoParseTags" class="pointer-events-none" tabindex="-1" />
+            </button>
+          </div>
         </TabsContent>
 
         <!-- Author Tab -->
-        <TabsContent value="author" class="mt-3 flex flex-col items-center gap-4">
-          <!-- Avatar -->
-          <img
-            src="https://files.catbox.moe/ca2r4f.png"
-            alt="Pilot1337"
-            class="h-16 w-16 sm:h-20 sm:w-20 rounded-full border-2 object-cover"
-          />
+        <TabsContent value="author" class="mt-3 space-y-3">
+          <!--
+            铭牌。.display 自带 uppercase,所以 markup 里留可读的 Pilot1337;
+            line-height .86 裁中日韩字形那条限制不适用 —— 这是纯拉丁串。
+            字标不上琥珀:单强调色只留给 hover 的外链箭头和复制成功的对勾。
+          -->
+          <div class="px-1">
+            <SectionLabel>{{ t('about.authorEyebrow') }}</SectionLabel>
+            <p class="display mt-1 text-[28px] sm:text-[34px]">Pilot1337</p>
+          </div>
 
-          <!-- Info -->
-          <div class="text-center space-y-1">
-            <p class="text-sm sm:text-base font-semibold">Pilot1337</p>
+          <Separator />
+
+          <!--
+            四条读出行沿用「功能设置」的行骨架,但主次反过来:这里值才是主体,
+            所以标签压成 text-muted-foreground,值用默认前景色。
+          -->
+          <div class="space-y-1">
+            <!-- Homepage -->
             <a
               href="https://github.com/jsh135790"
               target="_blank"
               rel="noopener noreferrer"
-              class="inline-flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors"
+              class="group flex items-center justify-between rounded-lg px-3 py-2.5 text-xs sm:text-sm transition-colors hover:bg-accent"
             >
-              <Github class="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-              jsh135790
+              <span class="flex items-center gap-2">
+                <Github class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
+                <span class="text-muted-foreground">{{ t('about.homepage') }}</span>
+              </span>
+              <span class="flex items-center gap-1.5 font-mono">
+                jsh135790
+                <ExternalLink class="h-3 w-3 text-dim transition-colors group-hover:text-primary" />
+              </span>
             </a>
-          </div>
 
-          <!-- QQ Group -->
-          <div class="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm">
-            <MessageCircle class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
-            <span class="text-muted-foreground">{{ t('about.feedbackGroup') }}</span>
-            <span class="font-mono font-medium">1046260326</span>
+            <!-- Repository -->
+            <a
+              href="https://github.com/jsh135790/aigc-gallery"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="group flex items-center justify-between rounded-lg px-3 py-2.5 text-xs sm:text-sm transition-colors hover:bg-accent"
+            >
+              <span class="flex items-center gap-2">
+                <GitBranch class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
+                <span class="text-muted-foreground">{{ t('about.repository') }}</span>
+              </span>
+              <span class="flex items-center gap-1.5 font-mono">
+                aigc-gallery
+                <ExternalLink class="h-3 w-3 text-dim transition-colors group-hover:text-primary" />
+              </span>
+            </a>
+
+            <!-- QQ Group -->
+            <div class="flex items-center justify-between rounded-lg px-3 py-2.5 text-xs sm:text-sm">
+              <span class="flex items-center gap-2">
+                <MessageCircle class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
+                <span class="text-muted-foreground">{{ t('about.feedbackGroup') }}</span>
+              </span>
+              <span class="flex items-center gap-1">
+                <span class="readout font-mono font-medium">{{ QQ_GROUP }}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  class="h-6 w-6"
+                  :aria-label="t('common.copy')"
+                  @click="copyGroup(QQ_GROUP)"
+                >
+                  <Check v-if="groupCopied" class="h-3 w-3 text-primary" />
+                  <Copy v-else class="h-3 w-3" />
+                </Button>
+              </span>
+            </div>
+
+            <!-- Version -->
+            <div class="flex items-center justify-between rounded-lg px-3 py-2.5 text-xs sm:text-sm">
+              <span class="flex items-center gap-2">
+                <Aperture class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
+                <span class="text-muted-foreground">{{ t('about.version') }}</span>
+              </span>
+              <span class="readout font-mono text-dim">v{{ appVersion }}</span>
+            </div>
           </div>
         </TabsContent>
       </Tabs>

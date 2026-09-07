@@ -2,12 +2,14 @@
 import { ref, watch, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  Heart, Trash2, Tag, Maximize2, Edit,
+  Heart, Trash2, Tag, Maximize2, Edit, FileSearch,
 } from 'lucide-vue-next'
 import { useAigcStore } from '@/stores/aigcStore'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
-import { cloneParsedMetadata, useMetadataEditor } from '@/composables/useMetadataEditor'
+import { useMetadataEditor } from '@/composables/useMetadataEditor'
+import { useMetadataInspector } from '@/composables/useMetadataInspector'
+import { parseBlobMetadata } from '@/lib/parser'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
@@ -39,10 +41,12 @@ const router = useRouter()
 const toast = useToast()
 const { t } = useI18n()
 const { setEditingImage } = useMetadataEditor()
+const { inspect } = useMetadataInspector()
 const imageUrl = ref('')
 const newTag = ref('')
 const lightboxOpen = ref(false)
 const previewTrigger = ref<HTMLButtonElement | null>(null)
+const busy = ref(false)
 
 // Compute current folder value for the select
 const currentFolderValue = computed(() => {
@@ -111,6 +115,16 @@ async function removeTag(tag: string) {
   await store.updateImage(props.image.id, { tags: updatedTags })
 }
 
+/*
+ * 点标签 = 按它筛选图库。面板盖住的正是要筛的网格,所以顺手关掉 ——
+ * 不关的话点下去屏幕上什么都不会变,只有工具栏那行筛选芯片悄悄多一个。
+ * 多标签是 AND(store.filteredImages 用 every),再点一次同一个标签取消。
+ */
+function filterByTag(tag: string) {
+  store.toggleTagFilter(tag)
+  emit('update:open', false)
+}
+
 async function handleMoveFolder(folderId: unknown) {
   if (!props.image?.id) return
   const id = String(folderId)
@@ -121,34 +135,60 @@ async function handleMoveFolder(folderId: unknown) {
   toast.success(t('detail.movedToFolder'))
 }
 
-function handleEditMetadata() {
-  if (!props.image) return
+/*
+ * 编辑会话不再从库行重建 —— 库行是"当时那个解析器"的产物,而写回时替换的是
+ * imageData 本身,所以 blob 永远是最新状态。直接从 blob 重新解析,拿到的就是
+ * 文件里真实存在的元数据,与这行何时导入无关。
+ *
+ * 这一点直接消掉了"中文 prompt 的 SD 图被编辑 → 写侧拿乱码 rawText 当 replay
+ * 基准重放"这条路径。
+ */
+async function handleEditMetadata() {
+  if (!props.image?.imageData || busy.value) return
+  busy.value = true
+  try {
+    const parsed = await parseBlobMetadata(props.image.imageData)
 
-  // Only allow editing for SD and NAI images
-  if (props.image.source !== 'sd' && props.image.source !== 'nai') {
-    toast.error(t('metadata.editor.unsupported'))
-    return
+    // 门槛看**重新解析出的**来源:旧解析器把一些 SD 图记成 unknown,那不该挡住编辑
+    if (parsed.source !== 'sd' && parsed.source !== 'nai') {
+      toast.error(t('metadata.editor.unsupported'))
+      return
+    }
+
+    setEditingImage({
+      id: String(props.image.id),
+      filename: props.image.filename,
+      blob: props.image.imageData,
+      metadata: parsed,
+      source: parsed.source,
+      // setEditingImage 内部对两份都做 clone,同一个对象传两次是安全的
+      originalMetadata: parsed,
+    })
+
+    router.push('/toolbox?tool=metadata-editor')
+  } catch {
+    toast.error(t('metadata.editor.parseFailed'))
+  } finally {
+    busy.value = false
   }
+}
 
-  const imageMetadata = cloneParsedMetadata({
-    source: props.image.source,
-    prompt: props.image.prompt,
-    negativePrompt: props.image.negativePrompt,
-    parameters: props.image.parameters,
-    rawText: props.image.rawMetadata,
-    v4Data: props.image.v4Data,
-  })
-
-  setEditingImage({
-    id: String(props.image.id),
-    filename: props.image.filename,
-    blob: props.image.imageData,
-    metadata: imageMetadata,
-    source: props.image.source,
-    originalMetadata: imageMetadata,
-  })
-
-  router.push('/toolbox?tool=metadata-editor')
+/** 查看器对所有来源开放 —— ComfyUI 图被编辑器整体挡着,这是它唯一的查看途径 */
+async function handleViewRawMetadata() {
+  if (!props.image?.imageData || busy.value) return
+  busy.value = true
+  try {
+    await inspect({
+      blob: props.image.imageData,
+      filename: props.image.filename,
+      imageId: props.image.id,
+    })
+    router.push('/toolbox?tool=metadata-inspector')
+  } catch {
+    toast.error(t('inspector.parseFailed'))
+  } finally {
+    busy.value = false
+  }
 }
 </script>
 
@@ -201,7 +241,9 @@ function handleEditMetadata() {
             :key="tag"
             :tag="tag"
             removable
+            :title="t('detail.filterByTag')"
             @remove="removeTag"
+            @click="filterByTag"
           />
           <span v-if="!image.tags.length" class="text-xs text-muted-foreground">{{ t('detail.noTags') }}</span>
         </div>
@@ -250,11 +292,26 @@ function handleEditMetadata() {
 
       <!-- Actions -->
       <div class="space-y-2">
+        <!--
+          查看器对所有来源开放。编辑按钮只对确定写不回去的 ComfyUI 隐藏 ——
+          source 为 unknown 的行可能是旧解析器误判,点进去会重新解析再决定。
+        -->
         <Button
-          v-if="image.source === 'sd' || image.source === 'nai'"
           variant="outline"
           size="sm"
           class="w-full gap-2"
+          :disabled="busy"
+          @click="handleViewRawMetadata"
+        >
+          <FileSearch class="h-4 w-4" />
+          {{ t('detail.viewRawMetadata') }}
+        </Button>
+        <Button
+          v-if="image.source !== 'comfyui'"
+          variant="outline"
+          size="sm"
+          class="w-full gap-2"
+          :disabled="busy"
           @click="handleEditMetadata"
         >
           <Edit class="h-4 w-4" />

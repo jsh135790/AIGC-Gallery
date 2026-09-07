@@ -24,6 +24,7 @@ import AppShell from '@/components/layout/AppShell.vue'
 import ArtistGrid from '@/components/gallery/ArtistGrid.vue'
 import ArtistForm from '@/components/gallery/ArtistForm.vue'
 import ArtistGroupPanel from '@/components/gallery/ArtistGroupPanel.vue'
+import { downloadBlob } from '@/lib/download'
 import type { Artist } from '@/types'
 
 const store = useArtistStore()
@@ -71,15 +72,14 @@ async function handleDelete(id: number) {
 }
 
 async function handleExport() {
-  const json = await store.exportCurrentPage()
-  const blob = new Blob([json], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `artist-${new Date().toISOString().slice(0, 10)}.json`
-  a.click()
-  URL.revokeObjectURL(url)
-  toast.success(t('artist.exportSuccess'))
+  try {
+    const json = await store.exportCurrentPage()
+    downloadBlob(new Blob([json], { type: 'application/json' }), `artist-${new Date().toISOString().slice(0, 10)}.json`)
+    // 成功提示留在 try 里 —— 旧实现无条件弹,导出失败也报成功
+    toast.success(t('artist.exportSuccess'))
+  } catch {
+    toast.error(t('artist.exportFailed'))
+  }
 }
 
 function handleImportClick() {

@@ -6,8 +6,6 @@ export type Theme = 'light' | 'dark' | 'system'
 export const useThemeStore = defineStore('theme', () => {
   const theme = ref<Theme>((localStorage.getItem('theme') as Theme) || 'dark')
 
-  const isDark = ref(false)
-
   function resolveSystemTheme(): boolean {
     // matchMedia can return false for "not dark" even when no preference.
     // We explicitly check the query result.
@@ -19,13 +17,7 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   function applyTheme() {
-    let dark: boolean
-    if (theme.value === 'system') {
-      dark = resolveSystemTheme()
-    } else {
-      dark = theme.value === 'dark'
-    }
-    isDark.value = dark
+    const dark = theme.value === 'system' ? resolveSystemTheme() : theme.value === 'dark'
     document.documentElement.classList.toggle('dark', dark)
   }
 
@@ -33,14 +25,6 @@ export const useThemeStore = defineStore('theme', () => {
     theme.value = newTheme
     localStorage.setItem('theme', newTheme)
     applyTheme()
-  }
-
-  function toggleTheme() {
-    if (theme.value === 'dark') {
-      setTheme('light')
-    } else {
-      setTheme('dark')
-    }
   }
 
   // Listen for system theme changes
@@ -62,5 +46,5 @@ export const useThemeStore = defineStore('theme', () => {
     applyTheme()
   })
 
-  return { theme, isDark, setTheme, toggleTheme, applyTheme }
+  return { theme, setTheme }
 })
