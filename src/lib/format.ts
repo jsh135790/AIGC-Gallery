@@ -36,3 +36,8 @@ export function prettify(text: string): string {
     return text
   }
 }
+
+/** 坐标使用原数值的文本形式，避免取整或固定小数位掩盖实际位置。 */
+export function formatCoordinates(centers: ReadonlyArray<{ x: number; y: number }>): string {
+  return centers.map(pt => `(${pt.x}, ${pt.y})`).join(' ')
+}

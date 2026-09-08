@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { db, stripProxy } from '@/lib/db'
 import { parseImageMetadata } from '@/lib/parser'
 import { DERIVED_FIELDS } from '@/lib/parser/fields'
+import { libraryCoordinator, LibraryAccessError } from '@/lib/storage/coordination'
 import type { AIGCImage, AIGCFolder, Tag, SortOrder, FolderNavItem, ImageSource, ParsedMetadata } from '@/types'
 
 /** 扫描能发现的问题种类。每一种都对应一条已知的丢数据路径 */
@@ -51,12 +52,11 @@ export const useAigcStore = defineStore('aigc', () => {
   let imageMutationQueue: Promise<void> = Promise.resolve()
 
   function enqueueImageMutation<T>(operation: () => Promise<T>): Promise<T> {
-    const result = imageMutationQueue.then(operation)
-    imageMutationQueue = result.then(
-      () => undefined,
-      () => undefined
-    )
-    return result
+    return libraryCoordinator.write(() => {
+      const result = imageMutationQueue.then(operation)
+      imageMutationQueue = result.then(() => undefined, () => undefined)
+      return result
+    })
   }
 
   // ===== View mode (grid / masonry), persisted =====
@@ -234,10 +234,13 @@ export const useAigcStore = defineStore('aigc', () => {
         if (!width || !height) continue
 
         // Patch memory + database (non-indexed fields, no schema bump needed)
-        img.width = width
-        img.height = height
-        await db.aigcImages.update(img.id!, { width, height })
-      } catch {
+        await enqueueImageMutation(async () => {
+          await db.aigcImages.update(img.id!, { width, height })
+          img.width = width
+          img.height = height
+        })
+      } catch (error) {
+        if (error instanceof LibraryAccessError) break
         // Skip failed rows silently; they fall back to square in masonry
       }
     }
@@ -407,6 +410,7 @@ export const useAigcStore = defineStore('aigc', () => {
         }
       } catch (error) {
         // 单行失败跳过,不阻塞其余行 —— 但不许静默:数字要对得上
+        if (error instanceof LibraryAccessError) throw error
         failed++
         console.error(`Failed to backfill metadata for image ${img.id}:`, error)
       }

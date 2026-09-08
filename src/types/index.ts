@@ -18,6 +18,8 @@ export interface Artist {
 
 export interface ArtistPage {
   id?: number
+  /** 仅标记程序创建且未修改的初始空分组，供空库恢复识别；非索引字段。 */
+  isBootstrap?: boolean
   name: string
   color?: string
   icon?: string

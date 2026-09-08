@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Aperture, Palette, Images, Wrench, Github, Info, MessageCircle, Sparkle, Settings, User, FileText, PenTool, Tags, Copy, Check, ExternalLink, GitBranch } from 'lucide-vue-next'
+import { Palette, Images, Wrench, Github, Info, MessageCircle, Sparkle, Settings, HardDrive, User, FileText, PenTool, Tags, Copy, Check, ExternalLink, GitBranch } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import SectionLabel from '@/components/common/SectionLabel.vue'
+import BrandIcon from '@/components/common/BrandIcon.vue'
 import ThemeToggle from './ThemeToggle.vue'
 import LanguageToggle from './LanguageToggle.vue'
 import { useI18n } from '@/composables/useI18n'
@@ -22,10 +23,16 @@ import { useBlurEffect } from '@/composables/useBlurEffect'
 import { useArtistSettings } from '@/composables/useArtistSettings'
 import { useAigcSettings } from '@/composables/useAigcSettings'
 import { useAccentColor, ACCENT_PRESETS } from '@/composables/useAccentColor'
+import StorageBackupPanel from '@/components/storage/StorageBackupPanel.vue'
+import { useBackup } from '@/composables/useBackup'
 
 const route = useRoute()
 const router = useRouter()
 const aboutOpen = ref(false)
+const { preventClose } = useBackup()
+const dialogOpen = computed({ get: () => aboutOpen.value, set: (open: boolean) => {
+  if (open || !preventClose.value) aboutOpen.value = open
+} })
 const aboutTab = ref('settings')
 const { t } = useI18n()
 const { blurEnabled, toggleBlur } = useBlurEffect()
@@ -76,9 +83,10 @@ function isActiveAccent(hex: string | null) {
       <!-- Logo -->
       <button
         class="mr-6 flex items-center gap-2 transition-colors hover:text-primary"
+        aria-label="AIGC Gallery"
         @click="router.push('/')"
       >
-        <Aperture class="h-5 w-5 text-primary" />
+        <BrandIcon class="h-5 w-5 text-primary" />
         <!-- .display = Big Shoulders 压缩体大写。纯拉丁串才安全(line-height .86 会裁中文) -->
         <span class="display hidden text-[19px] sm:inline-block">AIGC Gallery</span>
       </button>
@@ -147,24 +155,31 @@ function isActiveAccent(hex: string | null) {
   </header>
 
   <!-- About Dialog -->
-  <Dialog v-model:open="aboutOpen">
-    <DialogContent class="max-w-md w-[calc(100vw-2rem)]">
+  <Dialog v-model:open="dialogOpen">
+    <DialogContent class="max-w-md w-[calc(100vw-2rem)] max-h-[90dvh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle class="text-lg">{{ t('about.title') }}</DialogTitle>
         <DialogDescription>{{ t('about.description') }}</DialogDescription>
       </DialogHeader>
 
       <Tabs v-model="aboutTab" class="mt-2">
-        <TabsList class="grid w-full grid-cols-2">
-          <TabsTrigger value="settings" class="gap-1.5">
-            <Settings class="h-3.5 w-3.5" />
+        <TabsList class="grid w-full grid-cols-3">
+          <TabsTrigger value="settings" class="gap-1 px-1 text-xs sm:gap-1.5 sm:px-3 sm:text-sm" :disabled="preventClose">
+            <Settings class="hidden h-3.5 w-3.5 sm:block" />
             {{ t('about.tabSettings') }}
           </TabsTrigger>
-          <TabsTrigger value="author" class="gap-1.5">
-            <User class="h-3.5 w-3.5" />
+          <TabsTrigger value="storage" class="gap-1 px-1 text-xs sm:gap-1.5 sm:px-3 sm:text-sm">
+            <HardDrive class="hidden h-3.5 w-3.5 sm:block" />
+            <span class="sm:hidden">{{ t('storage.tabShort') }}</span>
+            <span class="hidden sm:inline">{{ t('storage.tab') }}</span>
+          </TabsTrigger>
+          <TabsTrigger value="author" class="gap-1 px-1 text-xs sm:gap-1.5 sm:px-3 sm:text-sm" :disabled="preventClose">
+            <User class="hidden h-3.5 w-3.5 sm:block" />
             {{ t('about.tabAuthor') }}
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="storage" class="mt-4"><StorageBackupPanel /></TabsContent>
 
         <!-- Settings Tab -->
         <TabsContent value="settings" class="mt-3 space-y-4">
@@ -345,7 +360,7 @@ function isActiveAccent(hex: string | null) {
             <!-- Version -->
             <div class="flex items-center justify-between rounded-lg px-3 py-2.5 text-xs sm:text-sm">
               <span class="flex items-center gap-2">
-                <Aperture class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
+                <BrandIcon class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
                 <span class="text-muted-foreground">{{ t('about.version') }}</span>
               </span>
               <span class="readout font-mono text-dim">v{{ appVersion }}</span>

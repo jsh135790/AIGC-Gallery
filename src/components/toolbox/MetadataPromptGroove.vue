@@ -91,8 +91,8 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="wrapper" class="flex flex-col gap-1.5">
-    <div class="flex items-center gap-2">
+  <div ref="wrapper" class="flex min-w-0 flex-col gap-1.5">
+    <div class="flex min-w-0 flex-wrap items-center gap-2">
       <SectionLabel>{{ label }}</SectionLabel>
       <span v-if="!dense" class="readout ml-auto text-2xs text-dim">
         {{ t('metadata.editor.meter', { tags: String(tagCount), chars: String(modelValue.length) }) }}
@@ -113,7 +113,7 @@ onUnmounted(() => {
 
     <textarea
       ref="field"
-      class="hair w-full resize-none rounded-md bg-background px-3 py-2.5 font-mono leading-[1.7] transition-colors placeholder:text-dim hover:border-primary/28 disabled:cursor-not-allowed disabled:opacity-45"
+      class="hair w-full min-w-0 resize-none [overflow-wrap:anywhere] rounded-md bg-background px-3 py-2.5 font-mono leading-[1.7] transition-colors placeholder:text-dim hover:border-primary/28 disabled:cursor-not-allowed disabled:opacity-45"
       :class="[
         dense ? 'max-h-[24vh] text-xs' : 'max-h-[34vh] text-[12.5px]',
         negative ? 'text-muted-foreground' : '',

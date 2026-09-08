@@ -69,7 +69,7 @@ function onFileChange(event: Event) {
 
 <template>
   <div
-    class="flex flex-col items-stretch gap-3.5 border-b p-4 sm:flex-row sm:items-start lg:min-h-0 lg:flex-col lg:items-stretch lg:overflow-y-auto lg:border-b-0 lg:border-r"
+    class="flex min-w-0 flex-col items-stretch gap-3.5 border-b p-4 sm:flex-row sm:items-start lg:min-h-0 lg:flex-col lg:items-stretch lg:overflow-y-auto lg:border-b-0 lg:border-r"
   >
     <!--
       版式随宽度走三段:窄屏竖排 → sm 起横排(预览缩到 168px,读出挪到右边)

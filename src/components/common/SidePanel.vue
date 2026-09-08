@@ -34,7 +34,7 @@ const { t } = useI18n()
     >
       <!-- Header -->
       <div class="flex h-14 shrink-0 items-center justify-between gap-2 border-b px-4">
-        <SheetTitle class="truncate text-sm font-semibold text-foreground">{{ title }}</SheetTitle>
+        <SheetTitle :title="title" class="min-w-0 truncate text-sm font-semibold text-foreground">{{ title }}</SheetTitle>
         <div class="flex shrink-0 items-center gap-1">
           <slot name="header-actions" />
           <Button
@@ -50,7 +50,7 @@ const { t } = useI18n()
       </div>
 
       <!-- Body -->
-      <div class="flex-1 overflow-y-auto">
+      <div class="min-h-0 min-w-0 flex-1 overflow-y-auto">
         <slot />
       </div>
 

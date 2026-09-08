@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { db, stripProxy } from '@/lib/db'
 import { DEFAULT_SWATCH } from '@/lib/colors'
+import { coordinatedWrite } from '@/lib/storage/coordination'
 import type { Artist, ArtistPage, SortOrder } from '@/types'
 
 const DEFAULT_PAGE_COLOR = DEFAULT_SWATCH
@@ -91,22 +92,27 @@ export const useArtistStore = defineStore('artist', () => {
   // ===== Pages =====
 
   async function loadPages() {
-    pages.value = await db.artistPages.toArray()
-    // Safety net: if a fresh install has no pages, create a default one.
-    if (pages.value.length === 0) {
-      const now = new Date()
-      const id = await db.artistPages.add({
-        name: '默认分组',
-        color: DEFAULT_PAGE_COLOR,
-        icon: 'Folder',
-        sortOrder: 0,
-        createdAt: now,
-        updatedAt: now,
-      } as ArtistPage)
-      pages.value = await db.artistPages.toArray()
-      return id
-    }
-    return null
+    // 两个空库页面同时启动时也只能创建一个默认分组，否则会误判成非空库。
+    const loaded = await db.transaction('rw', db.artistPages, async () => {
+      let stored = await db.artistPages.toArray()
+      let createdId: number | null = null
+      if (stored.length === 0) {
+        const now = new Date()
+        createdId = (await db.artistPages.add({
+          name: '默认分组',
+          isBootstrap: true,
+          color: DEFAULT_PAGE_COLOR,
+          icon: 'Folder',
+          sortOrder: 0,
+          createdAt: now,
+          updatedAt: now,
+        })) as number
+        stored = await db.artistPages.toArray()
+      }
+      return { stored, createdId: createdId ?? null }
+    })
+    pages.value = loaded.stored
+    return loaded.createdId
   }
 
   async function addPage(data: { name: string; color?: string; icon?: string }) {
@@ -130,6 +136,7 @@ export const useArtistStore = defineStore('artist', () => {
    * 少了这一步的表现是:界面显示改动成功,刷新后无声复原 —— 删除画师尤其致命。
    */
   async function updatePage(id: number, data: Partial<ArtistPage>) {
+    data = { ...data, isBootstrap: false }
     const now = new Date()
     const page = pages.value.find(p => p.id === id)
     const snapshot = page ? { ...page } : undefined
@@ -417,19 +424,19 @@ export const useArtistStore = defineStore('artist', () => {
     filteredArtists,
     categories,
     // pages
-    loadAll,
-    addPage,
-    updatePage,
-    deletePage,
-    movePageUp,
-    movePageDown,
+    loadAll: coordinatedWrite(loadAll),
+    addPage: coordinatedWrite(addPage),
+    updatePage: coordinatedWrite(updatePage),
+    deletePage: coordinatedWrite(deletePage),
+    movePageUp: coordinatedWrite(movePageUp),
+    movePageDown: coordinatedWrite(movePageDown),
     // artists
-    addArtist,
-    updateArtist,
-    deleteArtist,
-    toggleFavorite,
+    addArtist: coordinatedWrite(addArtist),
+    updateArtist: coordinatedWrite(updateArtist),
+    deleteArtist: coordinatedWrite(deleteArtist),
+    toggleFavorite: coordinatedWrite(toggleFavorite),
     // import/export
     exportCurrentPage,
-    importArtists,
+    importArtists: coordinatedWrite(importArtists),
   }
 })

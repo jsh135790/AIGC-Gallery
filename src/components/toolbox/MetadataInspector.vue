@@ -116,7 +116,7 @@ async function handleInspectFromLibrary(imageId: number) {
 </script>
 
 <template>
-  <div class="mx-auto flex max-w-5xl flex-col gap-4">
+  <div class="mx-auto flex min-w-0 max-w-5xl flex-col gap-4 [overflow-wrap:anywhere]">
     <!-- 模式切换:单图检查 / 全库扫描 -->
     <div class="hair flex w-fit rounded-md p-0.5">
       <button
@@ -169,7 +169,7 @@ async function handleInspectFromLibrary(imageId: number) {
           <div class="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
             <span class="micro">{{ diagnostics?.container ?? '—' }}</span>
             <span class="micro">{{ SOURCE_LABELS[session.metadata.source] }}</span>
-            <span v-if="session.metadata.stealth" class="micro text-primary">stealth</span>
+            <span v-if="session.metadata.stealth" class="micro text-primary">{{ t('metadata.stealth') }}</span>
             <span class="readout text-2xs text-dim">{{ session.parseMs.toFixed(1) }} ms</span>
           </div>
         </div>
@@ -206,13 +206,14 @@ async function handleInspectFromLibrary(imageId: number) {
           <pre class="hair max-h-24 overflow-auto rounded-md bg-background px-2.5 py-2 font-mono text-2xs leading-relaxed break-all whitespace-pre-wrap text-muted-foreground">{{ session.metadata.negativePrompt }}</pre>
         </div>
 
-        <div v-if="paramEntries.length" class="grid grid-cols-1 gap-x-5 gap-y-1.5 sm:grid-cols-2">
+        <div v-if="paramEntries.length" class="grid min-w-0 grid-cols-1 gap-x-5 gap-y-1.5 sm:grid-cols-2">
           <MetadataRow
             v-for="([key, value], i) in paramEntries"
             :key="key"
             :label="key"
             :value="value"
             :index="i"
+            compact
           />
         </div>
         <p v-else class="micro">{{ t('inspector.noParams') }}</p>
@@ -220,7 +221,7 @@ async function handleInspectFromLibrary(imageId: number) {
         <div v-if="nodeTypes.length" class="flex flex-col gap-1">
           <SectionLabel>{{ t('metadata.nodeTypes') }} · {{ nodeTypes.length }}</SectionLabel>
           <div class="flex max-h-32 flex-wrap gap-1 overflow-auto">
-            <Badge v-for="type in nodeTypes" :key="type" variant="outline" class="text-2xs font-mono">
+            <Badge v-for="type in nodeTypes" :key="type" variant="outline" class="max-w-full whitespace-normal text-2xs font-mono [overflow-wrap:anywhere]">
               {{ type }}
             </Badge>
           </div>
@@ -232,9 +233,9 @@ async function handleInspectFromLibrary(imageId: number) {
           <span class="micro">
             {{ t('metadata.characterPrompts') }} · {{ session.metadata.v4Data.characters.length }}
           </span>
-          <Badge v-if="session.metadata.v4Data.useOrder" variant="outline" class="text-2xs">use_order</Badge>
-          <Badge v-if="session.metadata.v4Data.useCoords" variant="outline" class="text-2xs">use_coords</Badge>
-          <Badge v-if="session.metadata.v4Data.legacyUc" variant="outline" class="text-2xs">legacy_uc</Badge>
+          <Badge v-if="session.metadata.v4Data.useOrder" variant="outline" class="text-2xs">{{ t('metadata.useOrder') }}</Badge>
+          <Badge v-if="session.metadata.v4Data.useCoords" variant="outline" class="text-2xs">{{ t('metadata.useCoords') }}</Badge>
+          <Badge v-if="session.metadata.v4Data.legacyUc" variant="outline" class="text-2xs">{{ t('metadata.legacyUc') }}</Badge>
         </div>
 
         <!-- rawText:写回 SD 时的 replay 基准,单独可折叠 -->
@@ -247,7 +248,7 @@ async function handleInspectFromLibrary(imageId: number) {
           >
             <ChevronDown v-if="showRaw" class="h-3 w-3" />
             <ChevronRight v-else class="h-3 w-3" />
-            {{ t('inspector.rawText') }} · {{ rawTextLength }} ch
+            {{ t('inspector.rawText') }} · {{ t('common.charCount', { count: rawTextLength }) }}
           </button>
           <pre
             v-if="showRaw"

@@ -2,18 +2,15 @@
 import { computed, ref, watch } from 'vue'
 import { ChevronDown, ChevronRight, Undo2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
+import AutoSizeTextarea from '@/components/common/AutoSizeTextarea.vue'
 import SectionLabel from '@/components/common/SectionLabel.vue'
 import { useI18n } from '@/composables/useI18n'
 import { prettify } from '@/lib/format'
 import type { ChangedField, ParamRow } from '@/composables/useMetadataEditor'
 
-/*
- * 右栏:参数 → 其他字段 → RAW → 原图对照。
- *
- * 「其他字段」是这次改版的功能核心之一:当前导出会把这些未识别字段全部静默丢掉,
- * 先把它们摆出来,丢失才成为可见的事(写侧已改成逐字保留,见 png-writer.ts)。
- */
+// 参数、其他字段、原始文本与修改记录分别展示。
 const props = defineProps<{
+  sessionKey: object
   rows: ParamRow[]
   changedKeys: Set<string>
   disabled: boolean
@@ -29,7 +26,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-const folds = ref({ extra: true, raw: false, diff: true })
+const folds = ref({ extra: false, raw: false, diff: true })
 
 function toggle(key: 'extra' | 'raw' | 'diff') {
   folds.value[key] = !folds.value[key]
@@ -54,7 +51,12 @@ const drafts = ref<Record<string, string>>({})
 /** 上一次从 props 看到的值:用它区分"外部改了"和"我自己刚抛上去的回流" */
 let mirrored: Record<string, string> = {}
 
-watch(() => props.rows, rows => {
+watch(() => [props.rows, props.sessionKey] as const, ([rows, sessionKey], previous) => {
+  if (sessionKey !== previous?.[1]) {
+    drafts.value = {}
+    mirrored = {}
+    folds.value = { extra: false, raw: false, diff: true }
+  }
   const next: Record<string, string> = {}
   for (const row of rows) {
     next[row.key] = row.value
@@ -72,7 +74,7 @@ function draftFor(row: ParamRow): string {
 }
 
 function onEdit(row: ParamRow, event: Event, commit: boolean) {
-  const value = (event.target as HTMLInputElement).value
+  const value = (event.target as HTMLInputElement | HTMLTextAreaElement).value
   drafts.value[row.key] = value
   emit('update:param', row.key, value, commit)
 }
@@ -89,16 +91,15 @@ const prettyRaw = computed(() => prettify(props.rawText))
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 border-t p-4 lg:min-h-0 lg:overflow-y-auto lg:border-t-0 lg:border-l">
+  <div class="flex min-w-0 flex-col gap-4 border-t p-4 lg:min-h-0 lg:overflow-y-auto lg:border-t-0 lg:border-l">
     <!-- 已知参数 -->
     <div>
       <SectionLabel>{{ t('metadata.parameters') }}</SectionLabel>
       <p v-if="!knownRows.length" class="micro mt-2">{{ t('metadata.editor.noParams') }}</p>
       <div v-else class="mt-1.5">
-        <div v-for="row in knownRows" :key="row.key" class="flex items-baseline justify-between gap-2.5 border-b py-1.5">
-          <span class="micro shrink-0" :class="changedKeys.has(row.key) ? 'text-primary' : ''">{{ row.label }}</span>
-          <input
-            class="readout min-w-0 flex-1 border-b border-transparent bg-transparent px-0 py-px text-right font-mono text-2xs font-medium transition-colors hover:border-primary/70 focus:border-primary/70 disabled:opacity-45"
+        <div v-for="row in knownRows" :key="row.key" class="min-w-0 space-y-1 border-b py-2">
+          <span class="block min-w-0 text-xs leading-relaxed [overflow-wrap:anywhere] text-muted-foreground" :class="changedKeys.has(row.key) ? 'text-primary' : ''">{{ row.label }}</span>
+          <AutoSizeTextarea
             :value="draftFor(row)"
             :disabled="disabled || row.locked"
             :aria-label="row.label"
@@ -127,10 +128,9 @@ const prettyRaw = computed(() => prettify(props.rawText))
 
       <div v-if="folds.extra" class="mt-0.5">
         <p class="mb-1.5 text-2xs leading-relaxed text-dim">{{ t('metadata.editor.extraFieldsHint') }}</p>
-        <div v-for="row in extraRows" :key="row.key" class="flex items-baseline justify-between gap-2.5 border-b py-1.5">
-          <span class="micro shrink-0" :class="changedKeys.has(row.key) ? 'text-primary' : ''">{{ row.label }}</span>
-          <input
-            class="readout min-w-0 flex-1 border-b border-transparent bg-transparent px-0 py-px text-right font-mono text-2xs font-medium transition-colors hover:border-primary/70 focus:border-primary/70 disabled:opacity-45"
+        <div v-for="row in extraRows" :key="row.key" class="min-w-0 space-y-1 border-b py-2">
+          <span class="block min-w-0 text-xs leading-relaxed [overflow-wrap:anywhere] text-muted-foreground" :class="changedKeys.has(row.key) ? 'text-primary' : ''">{{ row.label }}</span>
+          <AutoSizeTextarea
             :value="draftFor(row)"
             :disabled="disabled || row.locked"
             :aria-label="row.label"
@@ -152,7 +152,7 @@ const prettyRaw = computed(() => prettify(props.rawText))
         :aria-expanded="folds.raw"
         @click="toggle('raw')"
       >
-        Raw
+        {{ t('inspector.rawText') }}
         <ChevronDown v-if="folds.raw" class="ml-auto h-3.5 w-3.5" />
         <ChevronRight v-else class="ml-auto h-3.5 w-3.5" />
       </button>
@@ -182,7 +182,7 @@ const prettyRaw = computed(() => prettify(props.rawText))
           :key="`${row.label}-${i}`"
           class="flex items-center gap-2 border-b py-1 text-xs"
         >
-          <span class="min-w-0 flex-1 truncate text-primary" :title="row.label">{{ row.label }}</span>
+          <span class="min-w-0 flex-1 [overflow-wrap:anywhere] text-primary" :title="row.label">{{ row.label }}</span>
           <span class="readout text-2xs text-dim">{{ row.delta }}</span>
           <Button
             variant="ghost"

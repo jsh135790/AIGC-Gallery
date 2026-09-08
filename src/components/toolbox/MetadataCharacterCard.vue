@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { MapPin } from 'lucide-vue-next'
 import MetadataPromptGroove from './MetadataPromptGroove.vue'
 import { useI18n } from '@/composables/useI18n'
+import { formatCoordinates } from '@/lib/format'
 import { isAutoPosition } from '@/lib/parser/fields'
 import type { NAICharacterPrompt } from '@/types'
 
@@ -26,7 +27,7 @@ const isAuto = computed(() => isAutoPosition(props.character.centers))
 
 const coordText = computed(() => {
   if (isAuto.value) return t('metadata.autoPosition')
-  return props.character.centers.map(pt => `(${pt.x.toFixed(2)}, ${pt.y.toFixed(2)})`).join(' ')
+  return formatCoordinates(props.character.centers)
 })
 
 const title = computed(() => t('metadata.character', { idx: String(props.character.idx) }))
@@ -34,18 +35,18 @@ const title = computed(() => t('metadata.character', { idx: String(props.charact
 
 <template>
   <div class="hair flex flex-col gap-2 rounded-lg px-3 py-2.5">
-    <div class="flex items-center gap-2">
+    <div class="flex min-w-0 flex-wrap items-center gap-2">
       <span class="text-2xs font-semibold">{{ title }}</span>
-      <span v-if="character.centers.length" class="readout ml-auto flex items-center gap-1 text-2xs text-dim">
-        <MapPin class="h-3 w-3" />
-        {{ coordText }}
+      <span v-if="character.centers.length" class="readout ml-auto flex min-w-0 items-start gap-1 text-2xs text-dim [overflow-wrap:anywhere]">
+        <MapPin class="h-3 w-3 shrink-0" />
+        <span class="min-w-0">{{ coordText }}</span>
       </span>
     </div>
 
     <MetadataPromptGroove
       dense
-      label="Prompt"
-      :aria-label="`${title} · Prompt`"
+      :label="t('metadata.prompt')"
+      :aria-label="`${title} · ${t('metadata.prompt')}`"
       :model-value="character.prompt"
       :disabled="disabled"
       :min-rows="2"
@@ -56,8 +57,8 @@ const title = computed(() => t('metadata.character', { idx: String(props.charact
     <MetadataPromptGroove
       dense
       negative
-      label="Negative"
-      :aria-label="`${title} · Negative`"
+      :label="t('metadata.negativePrompt')"
+      :aria-label="`${title} · ${t('metadata.negativePrompt')}`"
       :model-value="character.negative"
       :disabled="disabled"
       :min-rows="2"

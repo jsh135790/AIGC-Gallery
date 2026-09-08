@@ -22,7 +22,8 @@ export const DERIVED_FIELDS = new Set(['nodeCount', 'nodeTypes'])
  * 在文件里长得一样 —— 显示成 `(0.00, 0.00)` 会让人以为角色被钉在左上角。
  */
 export function isAutoPosition(centers: NAICharacterPrompt['centers']): boolean {
+  // 小数坐标也是明确的位置，不能四舍五入后当作自动位置。
   return centers.length === 1
-    && Math.round(centers[0].x) === 0
-    && Math.round(centers[0].y) === 0
+    && centers[0].x === 0
+    && centers[0].y === 0
 }

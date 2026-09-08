@@ -11,6 +11,7 @@ import {
 import { useAigcStore } from '@/stores/aigcStore'
 import { useToast } from '@/composables/useToast'
 import { parseImageMetadata } from '@/lib/parser'
+import { COMMON_PARAMETER_KEYS, PARAMETER_LABEL_KEYS, formatMetadataValue } from '@/lib/metadata-display'
 import { DERIVED_FIELDS } from '@/lib/parser/fields'
 import { MetadataWriteError, writePNGMetadata } from '@/lib/parser/png-writer'
 import { downloadBlob } from '@/lib/download'
@@ -52,22 +53,9 @@ const {
   commitAsOriginal,
 } = useMetadataEditor()
 
-/** 已知字段的规范拼写。参数名不翻译 —— 它们就是文件里那些键 */
-const KNOWN_PARAM_LABELS: Record<string, string> = {
-  steps: 'Steps',
-  sampler: 'Sampler',
-  scheduler: 'Schedule Type',
-  cfgScale: 'CFG Scale',
-  seed: 'Seed',
-  size: 'Size',
-  model: 'Model',
-  vae: 'VAE',
-  clipSkip: 'Clip Skip',
-  denoisingStrength: 'Denoising',
+function paramLabel(key: string): string {
+  return PARAMETER_LABEL_KEYS[key] ? t(PARAMETER_LABEL_KEYS[key]) : key
 }
-
-/** 恒常显示的核心字段 —— 裸 PNG 也得能从零把参数填进去 */
-const CORE_PARAM_FIELDS = ['steps', 'sampler', 'cfgScale', 'seed', 'size', 'model']
 
 /** 值来自独立 tEXt chunk(原样透传),在这里改不会写进 Comment JSON */
 const LOCKED_PARAM_FIELDS = new Set(['source', 'generation_time'])
@@ -109,7 +97,7 @@ const sourceChip = computed(() => {
   if (!current) return ''
   if (current.source === 'nai') {
     const count = current.metadata.v4Data?.characters.length ?? 0
-    return count ? `NAI · V4 · ${count} CHARS` : 'NOVELAI'
+    return count ? `NAI · V4 · ${t('metadata.characterCount', { count })}` : 'NOVELAI'
   }
   if (current.source === 'sd') return 'SD WEBUI'
   if (current.source === 'comfyui') return 'COMFYUI'
@@ -136,13 +124,6 @@ const notices = computed(() => {
   return out
 })
 
-function toText(value: unknown): string {
-  if (value === undefined || value === null) return ''
-  if (typeof value === 'string') return value
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
-  return JSON.stringify(value) ?? ''
-}
-
 /*
  * NAI 把模型标识放在 Source chunk / Comment.source 里,Comment 通常没有 model 键。
  * 写侧不凭空造键,所以这种图上改 MODEL 不会落进文件 —— 与其留一个改了不生效的
@@ -164,13 +145,13 @@ const paramRows = computed<ParamRow[]>(() => {
   const rows: ParamRow[] = []
   const seen = new Set<string>()
 
-  for (const field of CORE_PARAM_FIELDS) {
+  for (const field of COMMON_PARAMETER_KEYS) {
     seen.add(field)
     const modelLocked = field === 'model' && naiModelLocked.value
     rows.push({
       key: field,
-      label: KNOWN_PARAM_LABELS[field] ?? field,
-      value: toText(params[field]),
+      label: paramLabel(field),
+      value: formatMetadataValue(params[field]),
       kind: 'known',
       locked: modelLocked,
       ...(modelLocked ? { lockReason: 'metadata.editor.lockedModelNai' } : {}),
@@ -180,7 +161,7 @@ const paramRows = computed<ParamRow[]>(() => {
   for (const [field, value] of Object.entries(params)) {
     if (seen.has(field) || DERIVED_FIELDS.has(field)) continue
     if (value === undefined || value === null || value === '') continue
-    const known = KNOWN_PARAM_LABELS[field]
+    const known = PARAMETER_LABEL_KEYS[field]
     /*
      * 数组 / 对象型字段(NAI 的 reference_strength_multiple: [0.6] 之类)显示成 JSON,
      * 也只接受 JSON —— 写侧按原值的类型透传,填成裸串会把数组变成字符串。
@@ -188,8 +169,8 @@ const paramRows = computed<ParamRow[]>(() => {
     const isJson = typeof value === 'object' && value !== null
     rows.push({
       key: field,
-      label: known ?? field,
-      value: toText(value),
+      label: paramLabel(field),
+      value: formatMetadataValue(value),
       kind: known ? 'known' : 'extra',
       locked: LOCKED_PARAM_FIELDS.has(field),
       ...(isJson ? { hint: 'metadata.editor.jsonFieldHint' } : {}),
@@ -210,9 +191,9 @@ const changedParamKeys = computed(() => {
 function diffLabel(field: ChangedField): string {
   if (field.kind === 'prompt') return t('metadata.prompt')
   if (field.kind === 'negativePrompt') return t('metadata.negativePrompt')
-  if (field.kind === 'param') return KNOWN_PARAM_LABELS[field.key] ?? field.key
+  if (field.kind === 'param') return paramLabel(field.key)
   const name = t('metadata.character', { idx: String(field.idx) })
-  return `${name} · ${field.sub === 'prompt' ? 'Prompt' : 'Negative'}`
+  return `${name} · ${t(field.sub === 'prompt' ? 'metadata.prompt' : 'metadata.negativePrompt')}`
 }
 
 const diffRows = computed(() => changedFields.value.map(field => ({
@@ -404,7 +385,7 @@ async function handleExport(target: ImageSource) {
   try {
     const blob = await writePNGMetadata(current.blob, current.metadata, target)
     downloadBlob(blob, exportFilename(current.filename))
-    success(t('metadata.editor.export'))
+    success(t('metadata.editor.exportDone'))
   } catch (err) {
     reportWriteError(err, 'metadata.editor.exportFailed')
   } finally {
@@ -451,7 +432,7 @@ async function handleWriteBack() {
 </script>
 
 <template>
-  <div v-if="session" class="flex h-full flex-col">
+  <div v-if="session" class="flex h-full min-w-0 flex-col">
     <!--
       三栏工作台:自己吃满高度、三栏各自滚动(Toolbox 对它关掉了 AppShell 的内边距)。
       注释放在根元素里面 —— 顶层注释会让组件编译成 fragment 根。
@@ -553,7 +534,7 @@ async function handleWriteBack() {
           <div
             v-for="(notice, index) in notices"
             :key="index"
-            class="flex gap-2 rounded-md p-2.5 text-xs leading-relaxed"
+            class="flex min-w-0 gap-2 rounded-md p-2.5 text-xs leading-relaxed [overflow-wrap:anywhere]"
             :class="NOTICE_TONE_CLASS[notice.tone]"
           >
             <TriangleAlert class="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -563,9 +544,9 @@ async function handleWriteBack() {
       </MetadataEditorRail>
 
       <!-- 中栏:提示词 -->
-      <div class="flex flex-col gap-4 p-4 lg:min-h-0 lg:overflow-y-auto">
+      <div class="flex min-w-0 flex-col gap-4 p-4 lg:min-h-0 lg:overflow-y-auto">
         <MetadataPromptGroove
-          label="Positive"
+          :label="t('metadata.prompt')"
           :aria-label="t('metadata.prompt')"
           :model-value="session.metadata.prompt"
           :disabled="isUnsupported"
@@ -576,7 +557,7 @@ async function handleWriteBack() {
 
         <MetadataPromptGroove
           negative
-          label="Negative"
+          :label="t('metadata.negativePrompt')"
           :aria-label="t('metadata.negativePrompt')"
           :model-value="session.metadata.negativePrompt"
           :disabled="isUnsupported"
@@ -586,7 +567,7 @@ async function handleWriteBack() {
         />
 
         <div v-if="characters.length" class="flex flex-col gap-2.5">
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <Users class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <SectionLabel>{{ t('metadata.characterPrompts') }}</SectionLabel>
             <span class="hair micro ml-auto rounded-sm px-1.5 py-0.5 text-muted-foreground">
@@ -604,6 +585,7 @@ async function handleWriteBack() {
       </div>
 
       <MetadataParamsRail
+        :session-key="session"
         :rows="paramRows"
         :changed-keys="changedParamKeys"
         :disabled="isUnsupported"
@@ -628,7 +610,7 @@ async function handleWriteBack() {
       :sublabel="t('metadata.editor.uploadSublabel')"
       @files="files => loadFile(files[0])"
     />
-    <p class="micro leading-relaxed">{{ t('metadata.editor.intro') }}</p>
+    <p class="text-xs leading-relaxed text-muted-foreground">{{ t('metadata.editor.intro') }}</p>
   </div>
 
   <Dialog :open="confirmMode !== null" @update:open="value => !value && cancelConfirm()">

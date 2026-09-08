@@ -35,23 +35,23 @@ function isUnconsumed(keyword: string) {
 </script>
 
 <template>
-  <section class="flex flex-col">
+  <section class="flex min-w-0 flex-col">
     <SectionLabel>{{ t('inspector.rawEntries') }} · {{ rows.length }}</SectionLabel>
 
     <p v-if="!rows.length" class="micro mt-2">{{ t('inspector.noEntries') }}</p>
 
-    <div v-else class="mt-1.5 flex flex-col">
+    <div v-else class="@container mt-1.5 flex min-w-0 flex-col">
       <div v-for="(row, i) in rows" :key="`${row.keyword}-${i}`" class="border-b">
         <button
           type="button"
-          class="flex w-full items-baseline gap-2.5 py-1.5 text-left transition-colors hover:bg-accent/60"
+          class="flex w-full min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-1 py-1.5 text-left transition-colors hover:bg-accent/60 @min-[32rem]:flex-nowrap"
           :aria-expanded="expanded.has(i)"
           @click="toggle(i)"
         >
           <ChevronDown v-if="expanded.has(i)" class="mt-0.5 h-3 w-3 shrink-0 text-dim" />
           <ChevronRight v-else class="mt-0.5 h-3 w-3 shrink-0 text-dim" />
 
-          <span class="min-w-0 flex-1 truncate font-mono text-xs font-medium" :title="row.keyword">
+          <span class="min-w-0 flex-1 basis-[calc(100%-1.5rem)] truncate font-mono text-xs font-medium @min-[32rem]:basis-0" :title="row.keyword">
             {{ row.keyword || t('inspector.emptyKeyword') }}
           </span>
 
@@ -63,16 +63,16 @@ function isUnconsumed(keyword: string) {
 
           <span class="micro shrink-0">{{ row.entryType }}</span>
           <span class="readout shrink-0 text-2xs text-dim">{{ formatBytes(row.byteLength) }}</span>
-          <span class="readout shrink-0 text-2xs text-dim">{{ row.charLength }} ch</span>
+          <span class="readout shrink-0 text-2xs text-dim">{{ t('common.charCount', { count: row.charLength }) }}</span>
           <span class="micro shrink-0" :class="ENTRY_STATUS_META[row.status].tone">
             {{ t(ENTRY_STATUS_META[row.status].label) }}
           </span>
         </button>
 
         <div v-if="expanded.has(i)" class="pb-2 pl-5">
-          <div v-if="row.languageTag || row.translatedKeyword" class="mb-1 flex gap-3">
-            <span v-if="row.languageTag" class="micro">lang: {{ row.languageTag }}</span>
-            <span v-if="row.translatedKeyword" class="micro">i18n: {{ row.translatedKeyword }}</span>
+          <div v-if="row.languageTag || row.translatedKeyword" class="mb-1 flex min-w-0 flex-wrap gap-3 [overflow-wrap:anywhere]">
+            <span v-if="row.languageTag" class="micro">{{ t('language.label') }}: {{ row.languageTag }}</span>
+            <span v-if="row.translatedKeyword" class="micro">{{ t('inspector.translatedKeyword') }}: {{ row.translatedKeyword }}</span>
           </div>
           <pre
             class="hair max-h-72 overflow-auto rounded-md bg-background px-2.5 py-2 font-mono text-2xs leading-relaxed break-all whitespace-pre-wrap text-muted-foreground"
