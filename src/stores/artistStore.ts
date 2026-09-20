@@ -178,11 +178,13 @@ export const useArtistStore = defineStore('artist', () => {
     }
 
     try {
-      // DB: reassign in bulk then delete
-      await Promise.all(
-        orphans.map(a => db.artists.update(a.id!, { pageId: fallbackId, updatedAt: now }))
-      )
-      await db.artistPages.delete(id)
+      // DB: 一个事务里批量改派再删分组,不再 N 次 update(每次都是整行读写,画师行含原图 Blob)
+      await db.transaction('rw', db.artists, db.artistPages, async () => {
+        if (orphans.length) {
+          await db.artists.bulkUpdate(orphans.map(a => ({ key: a.id!, changes: { pageId: fallbackId, updatedAt: now } })))
+        }
+        await db.artistPages.delete(id)
+      })
     } catch (error) {
       for (const snap of orphanSnapshots) {
         snap.artist.pageId = snap.pageId
@@ -207,9 +209,7 @@ export const useArtistStore = defineStore('artist', () => {
     })
 
     try {
-      await Promise.all(
-        orderedIds.map((id, idx) => db.artistPages.update(id, { sortOrder: idx, updatedAt: now }))
-      )
+      await db.artistPages.bulkUpdate(orderedIds.map((id, idx) => ({ key: id, changes: { sortOrder: idx, updatedAt: now } })))
     } catch (error) {
       for (const snap of snapshots) {
         snap.page.sortOrder = snap.sortOrder
@@ -273,9 +273,7 @@ export const useArtistStore = defineStore('artist', () => {
             a.pageId = fallbackId
             a.updatedAt = now
           }
-          await Promise.all(
-            orphans.map(a => db.artists.update(a.id!, { pageId: fallbackId, updatedAt: now }))
-          )
+          await db.artists.bulkUpdate(orphans.map(a => ({ key: a.id!, changes: { pageId: fallbackId, updatedAt: now } })))
         }
       }
     } finally {
@@ -289,13 +287,10 @@ export const useArtistStore = defineStore('artist', () => {
     const now = new Date()
     const clean = stripProxy(artist as Record<string, unknown>)
     const targetPageId = (artist.pageId ?? selectedPageId.value) ?? sortedPages.value[0]?.id ?? null
-    const id = await db.artists.add({
-      ...clean,
-      pageId: targetPageId,
-      createdAt: now,
-      updatedAt: now,
-    } as Artist)
-    await loadArtists()
+    const row = { ...clean, pageId: targetPageId, createdAt: now, updatedAt: now } as Artist
+    const id = await db.artists.add(row)
+    // 直接把写入的行推进内存,不再整表重读(重读会把所有画师连原图 Blob 一起再拉一遍)
+    artists.value.push({ ...row, id })
     return id
   }
 
@@ -389,22 +384,25 @@ export const useArtistStore = defineStore('artist', () => {
 
     const targetPageId = selectedPageId.value ?? sortedPages.value[0]?.id ?? null
 
-    for (const item of items) {
-      await db.artists.add({
-        name: item.name || '',
-        prompt: item.prompt || '',
-        category: item.category || '其他',
-        rating: item.rating || 0,
-        tags: item.tags || [],
-        images: [],
-        thumbnails: [],
-        isFavorite: item.isFavorite ?? false,
-        pageId: targetPageId,
-        createdAt: now,
-        updatedAt: now,
-      } as Artist)
-    }
-    await loadArtists()
+    type ImportedArtist = Partial<Pick<Artist, 'name' | 'prompt' | 'category' | 'rating' | 'tags' | 'isFavorite'>>
+    const rows: Artist[] = (items as ImportedArtist[]).map(item => ({
+      name: item.name || '',
+      prompt: item.prompt || '',
+      category: item.category || '其他',
+      rating: item.rating || 0,
+      tags: item.tags || [],
+      images: [],
+      thumbnails: [],
+      isFavorite: item.isFavorite ?? false,
+      pageId: targetPageId,
+      createdAt: now,
+      updatedAt: now,
+    }))
+    if (!rows.length) return
+    // 包在事务里:bulkAdd 遇单行失败会继续并在最后抛 BulkError,不包事务就留下「前半已入库、
+    // 内存没更新」的分叉;事务内整体回滚,内存不动。成功后按返回的 id 推进内存,不整表重读。
+    const ids = await db.transaction('rw', db.artists, () => db.artists.bulkAdd(rows, { allKeys: true }))
+    artists.value.push(...rows.map((row, index) => ({ ...row, id: ids[index] })))
   }
 
   return {

@@ -215,33 +215,46 @@ export const useAigcStore = defineStore('aigc', () => {
 
   // ===== Dimension backfill (for masonry) =====
   let dimsBackfillStarted = false
+  const DIMS_BACKFILL_BATCH = 50
   /**
-   * 旧数据没有 width/height 字段(瀑布流需要)。对缺失行逐个用缩略图
-   * createImageBitmap 量取比例并写回;只跑一次,单行失败跳过不阻塞。
+   * 旧数据没有 width/height 字段(瀑布流需要)。对缺失行用缩略图 createImageBitmap 量取比例,
+   * 每 50 行攒成一批、一次 bulkUpdate 写回;只跑一次,单行解码失败跳过不阻塞。
    * 注:量的是缩略图像素(足够算 aspect-ratio),非原图分辨率。
+   *
+   * 之前是每行一次 enqueueImageMutation:一行 = 一次跨标签页独占锁 + 一个事务 + 一次整行读写,
+   * 几千张老图就是几千次锁往返。解码仍在锁外做,锁只包住那一次批量写。
    */
   async function backfillImageDims() {
     if (dimsBackfillStarted) return
     dimsBackfillStarted = true
 
     const missing = images.value.filter(i => !i.width || !i.height)
-    for (const img of missing) {
-      try {
-        const bitmap = await createImageBitmap(img.thumbnail || img.imageData)
-        const width = bitmap.width
-        const height = bitmap.height
-        bitmap.close()
-        if (!width || !height) continue
+    for (let start = 0; start < missing.length; start += DIMS_BACKFILL_BATCH) {
+      const batch: { img: AIGCImage; width: number; height: number }[] = []
+      for (const img of missing.slice(start, start + DIMS_BACKFILL_BATCH)) {
+        try {
+          const bitmap = await createImageBitmap(img.thumbnail || img.imageData)
+          const { width, height } = bitmap
+          bitmap.close()
+          if (width && height) batch.push({ img, width, height })
+        } catch {
+          // Skip rows that fail to decode; they fall back to square in masonry
+        }
+      }
+      if (!batch.length) continue
 
-        // Patch memory + database (non-indexed fields, no schema bump needed)
+      try {
+        // Patch database + memory (non-indexed fields, no schema bump needed)
         await enqueueImageMutation(async () => {
-          await db.aigcImages.update(img.id!, { width, height })
-          img.width = width
-          img.height = height
+          await db.aigcImages.bulkUpdate(batch.map(({ img, width, height }) => ({ key: img.id!, changes: { width, height } })))
+          for (const { img, width, height } of batch) {
+            img.width = width
+            img.height = height
+          }
         })
       } catch (error) {
         if (error instanceof LibraryAccessError) break
-        // Skip failed rows silently; they fall back to square in masonry
+        // 这一批写失败就不回写内存,继续下一批
       }
     }
   }
@@ -546,7 +559,8 @@ export const useAigcStore = defineStore('aigc', () => {
       try {
         let updatedTags: Tag[] | undefined
         await db.transaction('rw', db.aigcImages, db.tags, async () => {
-          const storedImage = await db.aigcImages.get(id)
+          // 旧行只在改标签时需要(算 tag 增量);别的字段更新不必多读一次含 Blob 的整行
+          const storedImage = hasTags ? await db.aigcImages.get(id) : undefined
           const updated = await db.aigcImages.update(id, { ...clean, updatedAt: now })
           if (updated && hasTags && storedImage) {
             await applyTagDeltas(tagDeltasForChange(storedImage.tags, clean.tags as string[]), 'manual')
@@ -600,11 +614,8 @@ export const useAigcStore = defineStore('aigc', () => {
       }
 
       try {
-        await db.transaction('rw', db.aigcImages, async () => {
-          await Promise.all(
-            uniqueIds.map(id => db.aigcImages.update(id, { folderId, updatedAt: now }))
-          )
-        })
+        // 一次 bulkUpdate 而不是 N 次 update:Dexie 的 update 是「读整行→写整行」,N 张图就是 N 轮往返
+        await db.aigcImages.bulkUpdate(uniqueIds.map(id => ({ key: id, changes: { folderId, updatedAt: now } })))
       } catch (error) {
         for (const [id, snapshot] of snapshots) {
           const image = images.value.find(item => item.id === id)
