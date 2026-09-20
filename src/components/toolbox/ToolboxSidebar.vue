@@ -1,33 +1,8 @@
-<script lang="ts">
-import { FileEdit, FileSearch } from 'lucide-vue-next'
-
-/*
- * 工具清单的单一来源。侧栏条目、Toolbox 页的标题、`?tool=` 的白名单全从这里派生 ——
- * 之前 Toolbox.vue 的 toolTitles 与这里的 tools 各写一份,删一个工具要改两处,
- * 漏一处就得到「点不开的侧栏条目」或「没有标题的页面」。
- */
-export const TOOLS = [
-  {
-    id: 'metadata-editor',
-    icon: FileEdit,
-    label: 'toolbox.metadataEditor',
-    desc: 'toolbox.metadataEditorDesc',
-  },
-  {
-    id: 'metadata-inspector',
-    icon: FileSearch,
-    label: 'toolbox.metadataInspector',
-    desc: 'toolbox.metadataInspectorDesc',
-  },
-] as const
-
-export type ToolId = typeof TOOLS[number]['id']
-</script>
-
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n'
 import SectionLabel from '@/components/common/SectionLabel.vue'
 import SidebarItem from '@/components/layout/SidebarItem.vue'
+import { TOOLS, type ToolId } from './tools'
 
 const { t } = useI18n()
 

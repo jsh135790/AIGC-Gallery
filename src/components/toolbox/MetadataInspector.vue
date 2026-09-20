@@ -116,197 +116,200 @@ async function handleInspectFromLibrary(imageId: number) {
 </script>
 
 <template>
-  <div class="mx-auto flex min-w-0 max-w-5xl flex-col gap-4 [overflow-wrap:anywhere]">
-    <!-- 模式切换:单图检查 / 全库扫描 -->
-    <div class="hair flex w-fit rounded-md p-0.5">
-      <button
-        type="button"
-        class="micro flex items-center gap-1.5 rounded-sm px-2.5 py-1 transition-colors"
-        :class="mode === 'single' ? 'bg-accent text-foreground' : 'hover:text-foreground'"
-        @click="mode = 'single'"
-      >
-        <FileSearch class="h-3 w-3" />
-        {{ t('inspector.modeSingle') }}
-      </button>
-      <button
-        type="button"
-        class="micro flex items-center gap-1.5 rounded-sm px-2.5 py-1 transition-colors"
-        :class="mode === 'library' ? 'bg-accent text-foreground' : 'hover:text-foreground'"
-        @click="mode = 'library'"
-      >
-        <Layers class="h-3 w-3" />
-        {{ t('inspector.modeLibrary') }}
-      </button>
-    </div>
-
-    <InspectorLibraryScan v-if="mode === 'library'" @inspect="handleInspectFromLibrary" />
-
-    <template v-else-if="!session">
-      <DropZone
-        :multiple="false"
-        accept="image/*"
-        :scanning="loading"
-        :label="t('inspector.dropLabel')"
-        :sublabel="t('inspector.dropSublabel')"
-        @files="handleFiles"
-      />
-      <p class="micro leading-relaxed">{{ t('inspector.intro') }}</p>
-    </template>
-
-    <template v-else>
-      <!-- 文件头 -->
-      <section class="panel flex items-center gap-3 rounded-lg p-3">
-        <img
-          v-if="previewUrl"
-          :src="previewUrl"
-          :alt="session.filename"
-          class="hair h-14 w-14 shrink-0 rounded-md object-cover"
-        />
-        <div class="min-w-0 flex-1">
-          <p class="truncate font-mono text-xs font-medium" :title="session.filename">
-            {{ session.filename }}
-          </p>
-          <div class="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-            <span class="micro">{{ diagnostics?.container ?? '—' }}</span>
-            <span class="micro">{{ SOURCE_LABELS[session.metadata.source] }}</span>
-            <span v-if="session.metadata.stealth" class="micro text-primary">{{ t('metadata.stealth') }}</span>
-            <span class="readout text-2xs text-dim">{{ session.parseMs.toFixed(1) }} ms</span>
-          </div>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          class="h-7 w-7 shrink-0"
-          :title="t('inspector.clear')"
-          @click="clearSession"
+  <div class="p-4 md:p-6">
+    <!-- 内边距由工具自管(Toolbox 页 padded=false),放在 max-w-5xl 外层以保持内容列宽不变 -->
+    <div class="mx-auto flex min-w-0 max-w-5xl flex-col gap-4 [overflow-wrap:anywhere]">
+      <!-- 模式切换:单图检查 / 全库扫描 -->
+      <div class="hair flex w-fit rounded-md p-0.5">
+        <button
+          type="button"
+          class="micro flex items-center gap-1.5 rounded-sm px-2.5 py-1 transition-colors"
+          :class="mode === 'single' ? 'bg-accent text-foreground' : 'hover:text-foreground'"
+          @click="mode = 'single'"
         >
-          <X class="h-3.5 w-3.5" />
-        </Button>
-      </section>
+          <FileSearch class="h-3 w-3" />
+          {{ t('inspector.modeSingle') }}
+        </button>
+        <button
+          type="button"
+          class="micro flex items-center gap-1.5 rounded-sm px-2.5 py-1 transition-colors"
+          :class="mode === 'library' ? 'bg-accent text-foreground' : 'hover:text-foreground'"
+          @click="mode = 'library'"
+        >
+          <Layers class="h-3 w-3" />
+          {{ t('inspector.modeLibrary') }}
+        </button>
+      </div>
 
-      <!-- 非 PNG 容器:说清楚只读了 UserComment,别让人以为读全了 -->
-      <p v-if="isPartialContainer" class="micro leading-relaxed text-warning">
-        {{ t('inspector.partialContainer') }}
-      </p>
+      <InspectorLibraryScan v-if="mode === 'library'" @inspect="handleInspectFromLibrary" />
 
-      <!-- 层 1:容器里真实存在什么 -->
-      <InspectorChunkTable :rows="entryRows" :unconsumed-keys="unconsumedKeys" />
+      <template v-else-if="!session">
+        <DropZone
+          :multiple="false"
+          accept="image/*"
+          :scanning="loading"
+          :label="t('inspector.dropLabel')"
+          :sublabel="t('inspector.dropSublabel')"
+          @files="handleFiles"
+        />
+        <p class="micro leading-relaxed">{{ t('inspector.intro') }}</p>
+      </template>
 
-      <!-- 层 2:解析器从里面取出了什么 -->
-      <section class="flex flex-col gap-3">
-        <SectionLabel>{{ t('inspector.parsedFields') }}</SectionLabel>
-
-        <div v-if="session.metadata.prompt" class="flex flex-col gap-1">
-          <SectionLabel>{{ t('metadata.prompt') }}</SectionLabel>
-          <pre class="hair max-h-32 overflow-auto rounded-md bg-background px-2.5 py-2 font-mono text-2xs leading-relaxed break-all whitespace-pre-wrap">{{ session.metadata.prompt }}</pre>
-        </div>
-
-        <div v-if="session.metadata.negativePrompt" class="flex flex-col gap-1">
-          <SectionLabel>{{ t('metadata.negativePrompt') }}</SectionLabel>
-          <pre class="hair max-h-24 overflow-auto rounded-md bg-background px-2.5 py-2 font-mono text-2xs leading-relaxed break-all whitespace-pre-wrap text-muted-foreground">{{ session.metadata.negativePrompt }}</pre>
-        </div>
-
-        <div v-if="paramEntries.length" class="grid min-w-0 grid-cols-1 gap-x-5 gap-y-1.5 sm:grid-cols-2">
-          <MetadataRow
-            v-for="([key, value], i) in paramEntries"
-            :key="key"
-            :label="key"
-            :value="value"
-            :index="i"
-            compact
+      <template v-else>
+        <!-- 文件头 -->
+        <section class="panel flex items-center gap-3 rounded-lg p-3">
+          <img
+            v-if="previewUrl"
+            :src="previewUrl"
+            :alt="session.filename"
+            class="hair h-14 w-14 shrink-0 rounded-md object-cover"
           />
-        </div>
-        <p v-else class="micro">{{ t('inspector.noParams') }}</p>
-
-        <div v-if="nodeTypes.length" class="flex flex-col gap-1">
-          <SectionLabel>{{ t('metadata.nodeTypes') }} · {{ nodeTypes.length }}</SectionLabel>
-          <div class="flex max-h-32 flex-wrap gap-1 overflow-auto">
-            <Badge v-for="type in nodeTypes" :key="type" variant="outline" class="max-w-full whitespace-normal text-2xs font-mono [overflow-wrap:anywhere]">
-              {{ type }}
-            </Badge>
+          <div class="min-w-0 flex-1">
+            <p class="truncate font-mono text-xs font-medium" :title="session.filename">
+              {{ session.filename }}
+            </p>
+            <div class="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+              <span class="micro">{{ diagnostics?.container ?? '—' }}</span>
+              <span class="micro">{{ SOURCE_LABELS[session.metadata.source] }}</span>
+              <span v-if="session.metadata.stealth" class="micro text-primary">{{ t('metadata.stealth') }}</span>
+              <span class="readout text-2xs text-dim">{{ session.parseMs.toFixed(1) }} ms</span>
+            </div>
           </div>
-        </div>
-
-        <div v-if="session.metadata.v4Data" class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <Users class="h-3.5 w-3.5 shrink-0 self-center text-muted-foreground" />
-          <SectionLabel>NAI v4</SectionLabel>
-          <span class="micro">
-            {{ t('metadata.characterPrompts') }} · {{ session.metadata.v4Data.characters.length }}
-          </span>
-          <Badge v-if="session.metadata.v4Data.useOrder" variant="outline" class="text-2xs">{{ t('metadata.useOrder') }}</Badge>
-          <Badge v-if="session.metadata.v4Data.useCoords" variant="outline" class="text-2xs">{{ t('metadata.useCoords') }}</Badge>
-          <Badge v-if="session.metadata.v4Data.legacyUc" variant="outline" class="text-2xs">{{ t('metadata.legacyUc') }}</Badge>
-        </div>
-
-        <!-- rawText:写回 SD 时的 replay 基准,单独可折叠 -->
-        <div v-if="rawText" class="flex flex-col">
-          <button
-            type="button"
-            class="micro flex items-center gap-1.5 py-1 text-left transition-colors hover:text-foreground"
-            :aria-expanded="showRaw"
-            @click="showRaw = !showRaw"
+          <Button
+            variant="ghost"
+            size="icon"
+            class="h-7 w-7 shrink-0"
+            :title="t('inspector.clear')"
+            @click="clearSession"
           >
-            <ChevronDown v-if="showRaw" class="h-3 w-3" />
-            <ChevronRight v-else class="h-3 w-3" />
-            {{ t('inspector.rawText') }} · {{ t('common.charCount', { count: rawTextLength }) }}
-          </button>
-          <pre
-            v-if="showRaw"
-            class="hair max-h-72 overflow-auto rounded-md bg-background px-2.5 py-2 font-mono text-2xs leading-relaxed break-all whitespace-pre-wrap text-muted-foreground"
-          >{{ rawText }}</pre>
-        </div>
-      </section>
+            <X class="h-3.5 w-3.5" />
+          </Button>
+        </section>
 
-      <!-- 层 3:命中了哪条分支、哪块解不开、哪些键没人消费 —— 这一层才是工具存在的理由 -->
-      <section class="panel flex flex-col gap-3 rounded-lg p-4">
-        <SectionLabel>{{ t('inspector.diagnostics') }}</SectionLabel>
-
-        <div class="flex flex-col gap-1.5">
-          <div class="flex items-baseline justify-between gap-2">
-            <span class="micro shrink-0">{{ t('inspector.matchedBy') }}</span>
-            <span class="readout min-w-0 text-right font-mono text-xs font-medium">{{ matchedLabel }}</span>
-          </div>
-          <div class="flex items-baseline justify-between gap-2">
-            <span class="micro shrink-0">{{ t('inspector.container') }}</span>
-            <span class="readout font-mono text-xs font-medium">{{ diagnostics?.container ?? '—' }}</span>
-          </div>
-          <div class="flex items-baseline justify-between gap-2">
-            <span class="micro shrink-0">{{ t('inspector.entryCount') }}</span>
-            <span class="readout font-mono text-xs font-medium">{{ entryRows.length }}</span>
-          </div>
-        </div>
-
-        <div v-if="problemEntries.length" class="flex flex-col gap-1">
-          <SectionLabel>{{ t('inspector.decodeIssues') }} · {{ problemEntries.length }}</SectionLabel>
-          <div
-            v-for="(row, i) in problemEntries"
-            :key="`${row.keyword}-${i}`"
-            class="flex items-baseline gap-2"
-          >
-            <span class="min-w-0 flex-1 truncate font-mono text-xs">
-              {{ row.keyword || t('inspector.emptyKeyword') }}
-            </span>
-            <span class="micro shrink-0" :class="ENTRY_STATUS_META[row.status].tone">
-              {{ t(ENTRY_STATUS_META[row.status].label) }}
-            </span>
-          </div>
-        </div>
-
-        <!-- 没人消费的键:上游改名后第一时间出现在这里,映射由人来写 -->
-        <div v-if="unconsumedKeys.length" class="flex flex-col gap-1">
-          <SectionLabel>{{ t('inspector.unconsumedKeys') }} · {{ unconsumedKeys.length }}</SectionLabel>
-          <p class="text-2xs leading-relaxed break-all text-dim">{{ unconsumedKeys.join(', ') }}</p>
-          <p class="micro leading-relaxed">{{ t('inspector.unconsumedExplain') }}</p>
-        </div>
-
-        <p v-if="session.metadata.stealth" class="micro leading-relaxed text-warning">
-          {{ t('inspector.stealthNote') }}
+        <!-- 非 PNG 容器:说清楚只读了 UserComment,别让人以为读全了 -->
+        <p v-if="isPartialContainer" class="micro leading-relaxed text-warning">
+          {{ t('inspector.partialContainer') }}
         </p>
 
-        <p v-if="!problemEntries.length && !unconsumedKeys.length" class="micro">
-          {{ t('inspector.diagnosticsClean') }}
-        </p>
-      </section>
-    </template>
+        <!-- 层 1:容器里真实存在什么 -->
+        <InspectorChunkTable :rows="entryRows" :unconsumed-keys="unconsumedKeys" />
+
+        <!-- 层 2:解析器从里面取出了什么 -->
+        <section class="flex flex-col gap-3">
+          <SectionLabel>{{ t('inspector.parsedFields') }}</SectionLabel>
+
+          <div v-if="session.metadata.prompt" class="flex flex-col gap-1">
+            <SectionLabel>{{ t('metadata.prompt') }}</SectionLabel>
+            <pre class="hair max-h-32 overflow-auto rounded-md bg-background px-2.5 py-2 font-mono text-2xs leading-relaxed break-all whitespace-pre-wrap">{{ session.metadata.prompt }}</pre>
+          </div>
+
+          <div v-if="session.metadata.negativePrompt" class="flex flex-col gap-1">
+            <SectionLabel>{{ t('metadata.negativePrompt') }}</SectionLabel>
+            <pre class="hair max-h-24 overflow-auto rounded-md bg-background px-2.5 py-2 font-mono text-2xs leading-relaxed break-all whitespace-pre-wrap text-muted-foreground">{{ session.metadata.negativePrompt }}</pre>
+          </div>
+
+          <div v-if="paramEntries.length" class="grid min-w-0 grid-cols-1 gap-x-5 gap-y-1.5 sm:grid-cols-2">
+            <MetadataRow
+              v-for="([key, value], i) in paramEntries"
+              :key="key"
+              :label="key"
+              :value="value"
+              :index="i"
+              compact
+            />
+          </div>
+          <p v-else class="micro">{{ t('inspector.noParams') }}</p>
+
+          <div v-if="nodeTypes.length" class="flex flex-col gap-1">
+            <SectionLabel>{{ t('metadata.nodeTypes') }} · {{ nodeTypes.length }}</SectionLabel>
+            <div class="flex max-h-32 flex-wrap gap-1 overflow-auto">
+              <Badge v-for="type in nodeTypes" :key="type" variant="outline" class="max-w-full whitespace-normal text-2xs font-mono [overflow-wrap:anywhere]">
+                {{ type }}
+              </Badge>
+            </div>
+          </div>
+
+          <div v-if="session.metadata.v4Data" class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <Users class="h-3.5 w-3.5 shrink-0 self-center text-muted-foreground" />
+            <SectionLabel>NAI v4</SectionLabel>
+            <span class="micro">
+              {{ t('metadata.characterPrompts') }} · {{ session.metadata.v4Data.characters.length }}
+            </span>
+            <Badge v-if="session.metadata.v4Data.useOrder" variant="outline" class="text-2xs">{{ t('metadata.useOrder') }}</Badge>
+            <Badge v-if="session.metadata.v4Data.useCoords" variant="outline" class="text-2xs">{{ t('metadata.useCoords') }}</Badge>
+            <Badge v-if="session.metadata.v4Data.legacyUc" variant="outline" class="text-2xs">{{ t('metadata.legacyUc') }}</Badge>
+          </div>
+
+          <!-- rawText:写回 SD 时的 replay 基准,单独可折叠 -->
+          <div v-if="rawText" class="flex flex-col">
+            <button
+              type="button"
+              class="micro flex items-center gap-1.5 py-1 text-left transition-colors hover:text-foreground"
+              :aria-expanded="showRaw"
+              @click="showRaw = !showRaw"
+            >
+              <ChevronDown v-if="showRaw" class="h-3 w-3" />
+              <ChevronRight v-else class="h-3 w-3" />
+              {{ t('inspector.rawText') }} · {{ t('common.charCount', { count: rawTextLength }) }}
+            </button>
+            <pre
+              v-if="showRaw"
+              class="hair max-h-72 overflow-auto rounded-md bg-background px-2.5 py-2 font-mono text-2xs leading-relaxed break-all whitespace-pre-wrap text-muted-foreground"
+            >{{ rawText }}</pre>
+          </div>
+        </section>
+
+        <!-- 层 3:命中了哪条分支、哪块解不开、哪些键没人消费 —— 这一层才是工具存在的理由 -->
+        <section class="panel flex flex-col gap-3 rounded-lg p-4">
+          <SectionLabel>{{ t('inspector.diagnostics') }}</SectionLabel>
+
+          <div class="flex flex-col gap-1.5">
+            <div class="flex items-baseline justify-between gap-2">
+              <span class="micro shrink-0">{{ t('inspector.matchedBy') }}</span>
+              <span class="readout min-w-0 text-right font-mono text-xs font-medium">{{ matchedLabel }}</span>
+            </div>
+            <div class="flex items-baseline justify-between gap-2">
+              <span class="micro shrink-0">{{ t('inspector.container') }}</span>
+              <span class="readout font-mono text-xs font-medium">{{ diagnostics?.container ?? '—' }}</span>
+            </div>
+            <div class="flex items-baseline justify-between gap-2">
+              <span class="micro shrink-0">{{ t('inspector.entryCount') }}</span>
+              <span class="readout font-mono text-xs font-medium">{{ entryRows.length }}</span>
+            </div>
+          </div>
+
+          <div v-if="problemEntries.length" class="flex flex-col gap-1">
+            <SectionLabel>{{ t('inspector.decodeIssues') }} · {{ problemEntries.length }}</SectionLabel>
+            <div
+              v-for="(row, i) in problemEntries"
+              :key="`${row.keyword}-${i}`"
+              class="flex items-baseline gap-2"
+            >
+              <span class="min-w-0 flex-1 truncate font-mono text-xs">
+                {{ row.keyword || t('inspector.emptyKeyword') }}
+              </span>
+              <span class="micro shrink-0" :class="ENTRY_STATUS_META[row.status].tone">
+                {{ t(ENTRY_STATUS_META[row.status].label) }}
+              </span>
+            </div>
+          </div>
+
+          <!-- 没人消费的键:上游改名后第一时间出现在这里,映射由人来写 -->
+          <div v-if="unconsumedKeys.length" class="flex flex-col gap-1">
+            <SectionLabel>{{ t('inspector.unconsumedKeys') }} · {{ unconsumedKeys.length }}</SectionLabel>
+            <p class="text-2xs leading-relaxed break-all text-dim">{{ unconsumedKeys.join(', ') }}</p>
+            <p class="micro leading-relaxed">{{ t('inspector.unconsumedExplain') }}</p>
+          </div>
+
+          <p v-if="session.metadata.stealth" class="micro leading-relaxed text-warning">
+            {{ t('inspector.stealthNote') }}
+          </p>
+
+          <p v-if="!problemEntries.length && !unconsumedKeys.length" class="micro">
+            {{ t('inspector.diagnosticsClean') }}
+          </p>
+        </section>
+      </template>
+    </div>
   </div>
 </template>

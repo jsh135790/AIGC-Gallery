@@ -598,19 +598,22 @@ async function handleWriteBack() {
   </div>
 
   <!--
-    空态。与查看器同形(mx-auto max-w-5xl,顶部对齐)—— 之前这里是 h-full 垂直居中,
-    在工具箱里来回切两个工具时上传框会上下跳。内边距交给 AppShell:载入图之后才是
-    三栏工作台,Toolbox 的 padded 跟着 session 走。
+    空态。与查看器同形(外层 p-4 md:p-6,内层 mx-auto max-w-5xl,顶部对齐)—— 之前这里是
+    h-full 垂直居中,在工具箱里来回切两个工具时上传框会上下跳。内边距由工具自管:Toolbox 页
+    固定 padded=false,因为载入图之后的三栏工作台要吃满高度;内边距放在 max-w-5xl 外面那层,
+    直接加在盒子上会因 border-box 让内容列在宽屏窄一截。
   -->
-  <div v-else class="mx-auto flex max-w-5xl flex-col gap-4">
-    <DropZone
-      accept="image/png"
-      :multiple="false"
-      :label="t('metadata.editor.uploadHint')"
-      :sublabel="t('metadata.editor.uploadSublabel')"
-      @files="files => loadFile(files[0])"
-    />
-    <p class="text-xs leading-relaxed text-muted-foreground">{{ t('metadata.editor.intro') }}</p>
+  <div v-else class="p-4 md:p-6">
+    <div class="mx-auto flex max-w-5xl flex-col gap-4">
+      <DropZone
+        accept="image/png"
+        :multiple="false"
+        :label="t('metadata.editor.uploadHint')"
+        :sublabel="t('metadata.editor.uploadSublabel')"
+        @files="files => loadFile(files[0])"
+      />
+      <p class="text-xs leading-relaxed text-muted-foreground">{{ t('metadata.editor.intro') }}</p>
+    </div>
   </div>
 
   <Dialog :open="confirmMode !== null" @update:open="value => !value && cancelConfirm()">
