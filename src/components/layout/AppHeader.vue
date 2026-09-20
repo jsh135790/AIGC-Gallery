@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Palette, Images, Wrench, Github, Info, MessageCircle, Sparkle, Settings, HardDrive, User, FileText, PenTool, Tags, Copy, Check, ExternalLink, GitBranch } from 'lucide-vue-next'
+import { Palette, Images, Wrench, Github, Info, MessageCircle, Sparkle, Settings, HardDrive, User, FileText, PenTool, Tags, Copy, Check, ExternalLink, GitBranch, RefreshCw } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -25,6 +25,7 @@ import { useAigcSettings } from '@/composables/useAigcSettings'
 import { useAccentColor, ACCENT_PRESETS } from '@/composables/useAccentColor'
 import StorageBackupPanel from '@/components/storage/StorageBackupPanel.vue'
 import { useBackup } from '@/composables/useBackup'
+import { useUpdateCheck } from '@/composables/useUpdateCheck'
 
 const route = useRoute()
 const router = useRouter()
@@ -39,6 +40,9 @@ const { blurEnabled, toggleBlur } = useBlurEffect()
 const { autoFillName, autoFillPrefix, customPrefix, canTogglePrefix, canEditPrefix, toggleAutoFillName, toggleAutoFillPrefix } = useArtistSettings()
 const { autoParseTags, toggleAutoParseTags } = useAigcSettings()
 const { accentColor, setAccent } = useAccentColor()
+const { status: updateStatus, latest: latestRelease, enabled: checkUpdates, hasUnseenUpdate, markSeen: markUpdateSeen, retry: retryUpdateCheck, toggleEnabled: toggleCheckUpdates } = useUpdateCheck()
+// file:// 打开的用户换路径就是另一份空图库;部署用户只需重新部署 —— 升级提示按入口分两版
+const isFileOrigin = location.protocol === 'file:'
 
 /* vite.config.ts 的 define 注入,跟 package.json 同源。模板看不到全局 const,得转一手 */
 const appVersion = __APP_VERSION__
@@ -60,7 +64,14 @@ const navItems = computed(() => [
  * "功能设置"再淡出 —— 从"关于作者"关闭时尤其明显。
  */
 function openAbout() {
-  aboutTab.value = 'settings'
+  // 有没看过的新版本就直接落到作者 tab(版本行在那里)并记为已看 —— 角标是「有新消息」,看过就熄。
+  // preventClose 期间触发器是禁用的,v-model 会绕过它,所以这里也要守一下
+  if (hasUnseenUpdate.value && !preventClose.value) {
+    aboutTab.value = 'author'
+    markUpdateSeen()
+  } else {
+    aboutTab.value = 'settings'
+  }
   aboutOpen.value = true
 }
 
@@ -141,8 +152,12 @@ function isActiveAccent(hex: string | null) {
           class="h-9 w-9"
           @click="openAbout"
         >
-          <Info class="h-4 w-4" />
-          <span class="sr-only">{{ t('nav.about') }}</span>
+          <span class="relative inline-flex">
+            <Info class="h-4 w-4" />
+            <!-- 未看过的新版本:琥珀小点(单强调色纪律内);语义交给下面的 sr-only 文案 -->
+            <span v-if="hasUnseenUpdate" aria-hidden="true" class="absolute -right-1 -top-1 h-1.5 w-1.5 rounded-full bg-primary" />
+          </span>
+          <span class="sr-only">{{ hasUnseenUpdate ? t('update.badge') : t('nav.about') }}</span>
         </Button>
 
         <!-- Language -->
@@ -195,6 +210,18 @@ function isActiveAccent(hex: string | null) {
                 <span>{{ t('settings.blurEffect') }}</span>
               </div>
               <Switch :model-value="blurEnabled" class="pointer-events-none" tabindex="-1" />
+            </button>
+
+            <!-- Check for updates on startup(App 唯一的对外请求,默认开,可关) -->
+            <button
+              class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-xs sm:text-sm transition-colors hover:bg-accent"
+              @click="toggleCheckUpdates"
+            >
+              <div class="flex items-center gap-2">
+                <RefreshCw class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
+                <span>{{ t('settings.checkUpdates') }}</span>
+              </div>
+              <Switch :model-value="checkUpdates" class="pointer-events-none" tabindex="-1" />
             </button>
 
             <!-- Accent color -->
@@ -365,6 +392,34 @@ function isActiveAccent(hex: string | null) {
               </span>
               <span class="readout font-mono text-dim">v{{ appVersion }}</span>
             </div>
+
+            <!-- Update check:启动时查过一次 GitHub Releases;只有失败态给重试,成功/无更新都不放按钮 -->
+            <template v-if="updateStatus !== 'disabled' && updateStatus !== 'idle'">
+              <div class="flex items-center justify-between rounded-lg px-3 py-2.5 text-xs sm:text-sm">
+                <span class="flex items-center gap-2">
+                  <RefreshCw class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" :class="updateStatus === 'checking' && 'animate-spin'" />
+                  <span class="text-muted-foreground">{{ t('update.label') }}</span>
+                </span>
+                <a
+                  v-if="updateStatus === 'available' && latestRelease"
+                  :href="latestRelease.url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="group flex items-center gap-1.5 font-mono"
+                >
+                  {{ t('update.available', { version: latestRelease.version }) }}
+                  <ExternalLink class="h-3 w-3 text-dim transition-colors group-hover:text-primary" />
+                </a>
+                <span v-else-if="updateStatus === 'failed'" class="flex items-center gap-1">
+                  <span class="text-dim">{{ t('update.failed') }}</span>
+                  <Button variant="ghost" size="sm" class="h-6 px-2 text-xs" @click="retryUpdateCheck">{{ t('update.retry') }}</Button>
+                </span>
+                <span v-else class="readout font-mono text-dim">{{ t(updateStatus === 'checking' ? 'update.checking' : 'update.upToDate') }}</span>
+              </div>
+              <p v-if="updateStatus === 'available'" class="px-3 text-2xs leading-relaxed text-dim">
+                {{ t(isFileOrigin ? 'update.hintFile' : 'update.hintHosted') }}
+              </p>
+            </template>
           </div>
         </TabsContent>
       </Tabs>

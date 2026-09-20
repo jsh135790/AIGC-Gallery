@@ -17,7 +17,7 @@
   </p>
 </div>
 
-AIGC Gallery 是一款完全在浏览器中运行的本地 AI 图片管理工具，无需账号、后端或 API Key。图片与图库记录保存在当前浏览器的 IndexedDB 中，设置保存在本地；图片导入、元数据解析、编辑和备份均在本机完成，不上传到服务器。
+AIGC Gallery 是一款完全在浏览器中运行的本地 AI 图片管理工具，无需账号、后端或 API Key。图片与图库记录保存在当前浏览器的 IndexedDB 中，设置保存在本地；图片导入、元数据解析、编辑和备份均在本机完成，不上传到服务器。启动时会向 GitHub 请求一次最新版本号用于提示更新，该请求不携带任何图库数据，可在「关于 → 功能设置」中关闭。
 
 构建产物是一个自包含的 `index.html`，可以离线使用，也可以部署到静态网站。
 
@@ -34,7 +34,16 @@ AIGC Gallery 是一款完全在浏览器中运行的本地 AI 图片管理工具
 
 ## 快速开始
 
-### 下载使用
+### 部署使用（推荐）
+
+构建产物是单个静态 `index.html`，放到任何静态托管上即可。图库数据随部署域名保留，以后更新只需重新部署。
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/jsh135790/AIGC-Gallery)
+
+- **Vercel**：点击上方按钮 Fork 并导入仓库，框架预设选 Vite，构建命令 `npm run build`，输出目录 `dist`。`*.vercel.app` 域名在中国大陆经常无法访问，建议绑定自己的域名。
+- **其他静态服务器**：本地执行 `npm run build`，把 `dist/index.html` 上传到任意 HTTPS 静态站点（Nginx、Cloudflare Pages、GitHub Pages 等）。
+
+### 本地打开
 
 1. 在 [Releases](https://github.com/jsh135790/AIGC-Gallery/releases) 下载发布包并解压。
 2. 使用近期版本的桌面 Chrome 或 Edge 打开其中的 `index.html`。

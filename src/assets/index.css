@@ -55,7 +55,7 @@
  * woff2 来源:@fontsource-variable/{geist-mono,big-shoulders-display} 的
  * files/*-latin-wght-normal.woff2,已 vendored 进 src/assets/fonts/。
  * 只取 latin 可变子集:vite-plugin-singlefile 会把字体 base64 内联进
- * dist/index.html,多拉一个子集就是几十 KB 的净增(预算 <900KB)。
+ * dist/index.html,多拉一个子集就是几十 KB 的净增。
  * 升级字体时从该包重新拷贝同名文件即可,不要 import 整个包。
  *
  * 中文有意不配字形,回落系统黑体(PingFang SC / HarmonyOS Sans SC / 雅黑),

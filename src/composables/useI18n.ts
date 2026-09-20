@@ -289,6 +289,18 @@ const messages: Record<Locale, Record<string, string>> = {
     'language.en': 'English',
     'language.label': '语言',
 
+    // Update check
+    'settings.checkUpdates': '启动时检查更新',
+    'update.label': '更新',
+    'update.badge': '关于(有新版本)',
+    'update.available': '有新版本 v{version}',
+    'update.upToDate': '已是最新',
+    'update.checking': '检查中…',
+    'update.failed': '检查失败',
+    'update.retry': '重试',
+    'update.hintFile': '更新前请先在「存储与备份」完成备份;把新的 index.html 放回原路径再打开,换路径会打开另一份空图库。',
+    'update.hintHosted': '更新前请先在「存储与备份」完成备份;重新部署新版本即可,图库随域名保留。',
+
     // Toolbox
     'toolbox.title': '工具箱',
     'toolbox.metadataEditor': '元数据编辑器',
@@ -704,6 +716,18 @@ const messages: Record<Locale, Record<string, string>> = {
     'language.zh': '中文',
     'language.en': 'English',
     'language.label': 'Language',
+
+    // Update check
+    'settings.checkUpdates': 'Check for updates on startup',
+    'update.label': 'Update',
+    'update.badge': 'About (new version available)',
+    'update.available': 'v{version} available',
+    'update.upToDate': 'Up to date',
+    'update.checking': 'Checking…',
+    'update.failed': 'Check failed',
+    'update.retry': 'Retry',
+    'update.hintFile': 'Back up first (Storage & Backup), then put the new index.html back at the same path before opening it. A different path opens a different, empty library.',
+    'update.hintHosted': 'Back up first (Storage & Backup), then redeploy the new version. The library stays with the domain.',
 
     // Toolbox
     'toolbox.title': 'Toolbox',

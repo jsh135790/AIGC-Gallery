@@ -17,7 +17,7 @@
   </p>
 </div>
 
-AIGC Gallery is a local AI image manager that runs entirely in your browser. No account, backend, or API key is required. Images and library records stay in the current browser's IndexedDB, and settings are saved locally. Image imports, metadata parsing, editing, and backups run on your device without uploading your data to a server.
+AIGC Gallery is a local AI image manager that runs entirely in your browser. No account, backend, or API key is required. Images and library records stay in the current browser's IndexedDB, and settings are saved locally. Image imports, metadata parsing, editing, and backups run on your device without uploading your data to a server. On startup the app asks GitHub once for the latest release version so it can tell you about updates; that request carries no library data and can be turned off under About → Settings.
 
 The production build is a self-contained `index.html` that works offline or on a static website.
 
@@ -34,7 +34,16 @@ The production build is a self-contained `index.html` that works offline or on a
 
 ## Getting started
 
-### Download a release
+### Deploy it (recommended)
+
+The build is a single static `index.html`, so any static host works. Your library stays with the deployed domain, and updating later is just a redeploy.
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/jsh135790/AIGC-Gallery)
+
+- **Vercel**: click the button above to fork and import the repository; pick the Vite preset, build command `npm run build`, output directory `dist`. `*.vercel.app` domains are frequently unreachable from mainland China, so attach your own domain if that is your audience.
+- **Any static server**: run `npm run build` locally and upload `dist/index.html` to any HTTPS static site (Nginx, Cloudflare Pages, GitHub Pages, ...).
+
+### Open it locally
 
 1. Download a release archive from [Releases](https://github.com/jsh135790/AIGC-Gallery/releases) and extract it.
 2. Open its `index.html` in a recent desktop version of Chrome or Edge.
