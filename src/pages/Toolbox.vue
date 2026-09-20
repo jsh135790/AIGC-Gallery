@@ -7,7 +7,6 @@ import AppShell from '@/components/layout/AppShell.vue'
 import ToolboxSidebar, { TOOLS, type ToolId } from '@/components/toolbox/ToolboxSidebar.vue'
 import MetadataEditor from '@/components/toolbox/MetadataEditor.vue'
 import MetadataInspector from '@/components/toolbox/MetadataInspector.vue'
-import ImgToPrompt from '@/components/toolbox/ImgToPrompt.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -58,6 +57,5 @@ const padded = computed(() => activeTool.value !== 'metadata-editor' || !session
 
     <MetadataEditor v-if="activeTool === 'metadata-editor'" />
     <MetadataInspector v-else-if="activeTool === 'metadata-inspector'" />
-    <ImgToPrompt v-else-if="activeTool === 'img-to-prompt'" />
   </AppShell>
 </template>

@@ -292,9 +292,6 @@ const messages: Record<Locale, Record<string, string>> = {
     'toolbox.metadataEditorDesc': '编辑图片提示词与生成参数',
     'toolbox.metadataInspector': '元数据查看器',
     'toolbox.metadataInspectorDesc': '查看图片元数据与读取结果',
-    'toolbox.imgToPrompt': '图片反推提示词',
-    'toolbox.imgToPromptDesc': '从图片反推生成提示词',
-    'toolbox.wip': '功能开发中',
 
     // Metadata Editor
     'metadata.editor.export': '导出 PNG',
@@ -708,9 +705,6 @@ const messages: Record<Locale, Record<string, string>> = {
     'toolbox.metadataEditorDesc': 'Edit image prompts and generation parameters',
     'toolbox.metadataInspector': 'Metadata Inspector',
     'toolbox.metadataInspectorDesc': 'View image metadata and reading results',
-    'toolbox.imgToPrompt': 'Image to Prompt',
-    'toolbox.imgToPromptDesc': 'Generate prompts from images',
-    'toolbox.wip': 'Coming soon',
 
     // Metadata Editor
     'metadata.editor.export': 'Export PNG',

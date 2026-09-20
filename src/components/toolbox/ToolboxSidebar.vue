@@ -1,5 +1,5 @@
 <script lang="ts">
-import { FileEdit, FileSearch, ImagePlus } from 'lucide-vue-next'
+import { FileEdit, FileSearch } from 'lucide-vue-next'
 
 /*
  * 工具清单的单一来源。侧栏条目、Toolbox 页的标题、`?tool=` 的白名单全从这里派生 ——
@@ -18,12 +18,6 @@ export const TOOLS = [
     icon: FileSearch,
     label: 'toolbox.metadataInspector',
     desc: 'toolbox.metadataInspectorDesc',
-  },
-  {
-    id: 'img-to-prompt',
-    icon: ImagePlus,
-    label: 'toolbox.imgToPrompt',
-    desc: 'toolbox.imgToPromptDesc',
   },
 ] as const
 

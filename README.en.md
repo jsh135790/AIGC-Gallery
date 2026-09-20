@@ -32,8 +32,6 @@ The production build is a self-contained `index.html` that works offline or on a
 | Storage & backup | View storage usage and protection status, request persistent storage, back up both libraries to a folder, and restore to an empty library |
 | Appearance & language | English and Chinese, automatic language detection, light / dark / system themes, custom accent colors, and optional blur effects |
 
-The toolbox's **Image to Prompt** entry is currently a placeholder and is not implemented.
-
 ## Getting started
 
 ### Download a release
