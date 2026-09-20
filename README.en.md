@@ -26,7 +26,7 @@ The production build is a self-contained `index.html` that works offline or on a
 | Feature | What you can do |
 | --- | --- |
 | AIGC Library | Drag and drop or import multiple images, filter by folder or tag, search, favorite, delete selections, and switch between grid and masonry views |
-| Artist Gallery | Organize artist prompts into custom groups, save sample images, categories, tags, favorites, and ratings, copy prompts, and import / export records as JSON |
+| Artist Gallery | Organize artist prompts into custom groups, save sample images, custom style categories, tags, favorites, and ratings, copy prompts, and import / export records as JSON |
 | Metadata Editor | Edit prompts, negative prompts, generation parameters, and NovelAI v4 character prompts in SD WebUI / NovelAI PNGs; review changes, undo individual edits, export PNGs, or write back to the library |
 | Metadata Inspector | Examine raw metadata entries, parsed fields, and reading diagnostics, including ComfyUI; check library metadata and fill missing information on request |
 | Storage & backup | View storage usage and protection status, request persistent storage, back up both libraries to a folder, and restore to an empty library |

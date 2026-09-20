@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, watch, toRaw, onUnmounted } from 'vue'
+import { computed, nextTick, ref, reactive, watch, toRaw, onUnmounted } from 'vue'
 import { Plus, X, Trash2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,7 +18,6 @@ import { useI18n } from '@/composables/useI18n'
 import { useArtistSettings } from '@/composables/useArtistSettings'
 import { useArtistStore } from '@/stores/artistStore'
 import type { Artist } from '@/types'
-import { ARTIST_CATEGORIES } from '@/types'
 import { DEFAULT_SWATCH } from '@/lib/colors'
 
 const props = defineProps<{
@@ -32,7 +31,7 @@ const emit = defineEmits<{
   delete: [id: number]
 }>()
 
-const { t, translateCategory } = useI18n()
+const { t, translateCategory, normalizeCategory } = useI18n()
 const { autoFillName, autoFillPrefix, customPrefix } = useArtistSettings()
 const store = useArtistStore()
 
@@ -51,6 +50,43 @@ const form = reactive({
 const newTag = ref('')
 const imagePreviews = ref<string[]>([])
 
+/*
+ * 自定义分类:Select 末项是哨兵「自定义…」,选中后原地换成输入框;哨兵永远不写进 form.category
+ * (Select 是受控的,触发器停在旧值上)。刚输入、尚未保存的新值还不在全库集合里,所以选项列表
+ * 要把 form.category 自己补进去 —— 否则 reka SelectValue 找不到匹配项就退回 placeholder;
+ * 之前正是靠 placeholder 假显示列表外的值,任何一次选择都会把它弄丢且再也选不回。
+ */
+const CUSTOM_CATEGORY = '__custom__'
+const customMode = ref(false)
+const customInput = ref('')
+const customInputRef = ref<InstanceType<typeof Input> | null>(null)
+
+const categoryOptions = computed(() => {
+  const list = [...store.categoryOptions]
+  if (form.category && !list.includes(form.category)) list.push(form.category)
+  return list
+})
+
+function onCategorySelect(value: unknown) {
+  if (value === CUSTOM_CATEGORY) enterCustomMode()
+  else if (typeof value === 'string' && value) form.category = value
+}
+
+function enterCustomMode() {
+  customMode.value = true
+  customInput.value = ''
+  // Select 的触发器要先卸载、输入框挂上之后才有东西可聚焦
+  void nextTick(() => (customInputRef.value?.$el as HTMLInputElement | undefined)?.focus())
+}
+
+/** 回车 / 失焦 / 点保存都会走到这里;空输入 = 放弃,保留原分类 */
+function commitCustom() {
+  if (!customMode.value) return
+  const value = normalizeCategory(customInput.value)
+  if (value) form.category = value
+  customMode.value = false
+}
+
 function revokePreviews() {
   imagePreviews.value.forEach(url => URL.revokeObjectURL(url))
   imagePreviews.value = []
@@ -66,6 +102,7 @@ onUnmounted(revokePreviews)
 watch([() => props.editArtist, () => props.open], ([artist, isOpen]) => {
   // Clean up old preview URLs
   revokePreviews()
+  customMode.value = false
 
   // Only fill form when panel is opening with an artist
   if (isOpen && artist) {
@@ -99,6 +136,8 @@ function resetForm() {
   form.thumbnails = []
   form.isFavorite = false
   form.pageId = store.selectedPageId
+  customMode.value = false
+  customInput.value = ''
   revokePreviews()
 }
 
@@ -137,6 +176,7 @@ function removeTag(tag: string) {
 }
 
 function save() {
+  commitCustom()
   if (!form.name.trim() || !form.prompt.trim()) return
   const raw = toRaw(form)
   emit('save', {
@@ -223,13 +263,37 @@ function onOpenChange(v: boolean) {
       <!-- Category -->
       <div class="space-y-2">
         <label class="text-sm font-medium">{{ t('artist.category') }}</label>
-        <Select v-model="form.category">
+        <div v-if="customMode" class="flex gap-2">
+          <Input
+            ref="customInputRef"
+            v-model="customInput"
+            :placeholder="t('artist.customCategoryPlaceholder')"
+            class="flex-1"
+            @keydown.enter.prevent="commitCustom"
+            @blur="commitCustom"
+          />
+          <!-- mousedown.prevent:别让输入框先失焦提交,这颗按钮的语义是「放弃、回列表」 -->
+          <Button
+            variant="outline"
+            size="icon"
+            class="h-9 w-9 shrink-0"
+            :aria-label="t('artist.backToCategoryList')"
+            @mousedown.prevent
+            @click="customMode = false"
+          >
+            <X class="h-4 w-4" />
+          </Button>
+        </div>
+        <Select v-else :model-value="form.category" @update:model-value="onCategorySelect">
           <SelectTrigger class="cursor-pointer">
-            <SelectValue :placeholder="translateCategory(form.category)" />
+            <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem v-for="cat in ARTIST_CATEGORIES" :key="cat" :value="cat">
+            <SelectItem v-for="cat in categoryOptions" :key="cat" :value="cat">
               {{ translateCategory(cat) }}
+            </SelectItem>
+            <SelectItem :value="CUSTOM_CATEGORY" class="text-muted-foreground">
+              {{ t('artist.customCategory') }}
             </SelectItem>
           </SelectContent>
         </Select>

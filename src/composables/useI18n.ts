@@ -155,6 +155,9 @@ const messages: Record<Locale, Record<string, string>> = {
     'artist.name': '画师名称',
     'artist.prompt': '画师串',
     'artist.category': '风格分类',
+    'artist.customCategory': '自定义…',
+    'artist.customCategoryPlaceholder': '输入新的风格分类',
+    'artist.backToCategoryList': '返回列表',
     'artist.rating': '评分',
     'artist.tags': '标签',
     'artist.sampleImage': '示例图片',
@@ -568,6 +571,9 @@ const messages: Record<Locale, Record<string, string>> = {
     'artist.name': 'Artist Name',
     'artist.prompt': 'Artist Prompt',
     'artist.category': 'Style Category',
+    'artist.customCategory': 'Custom…',
+    'artist.customCategoryPlaceholder': 'Type a new style category',
+    'artist.backToCategoryList': 'Back to list',
     'artist.rating': 'Rating',
     'artist.tags': 'Tags',
     'artist.sampleImage': 'Sample Image',
@@ -885,6 +891,22 @@ export const CATEGORY_KEYS: Record<string, string> = {
   '其他': 'category.other',
 }
 
+/**
+ * 用户自定义分类的归一:输入若与某内置分类的中文值、zh-CN 或 en 显示名完全一致(忽略大小写与首尾空白),
+ * 折回内置中文值,避免「二次元」和「Anime」在库里变成两个分类;否则 trim 后原样入库。
+ * 放在这个文件是因为 messages 是模块私有的,别处拿不到两种语言的文案。
+ */
+export function normalizeCategory(input: string): string {
+  const trimmed = input.trim()
+  if (!trimmed) return ''
+  const needle = trimmed.toLowerCase()
+  for (const [value, key] of Object.entries(CATEGORY_KEYS)) {
+    const names = [value, messages['zh-CN']?.[key], messages['en']?.[key]]
+    if (names.some(name => name?.toLowerCase() === needle)) return value
+  }
+  return trimmed
+}
+
 export function useI18n() {
   const locale = currentLocale
 
@@ -904,15 +926,10 @@ export function useI18n() {
     document.documentElement.lang = newLocale === 'zh-CN' ? 'zh' : 'en'
   }
 
-  // Translate category (handles both directions)
+  // 内置分类(中文值)翻译成当前语言;自定义分类没有文案,原样显示
   function translateCategory(category: string): string {
-    // If it's a Chinese category, translate to current locale
     if (CATEGORY_KEYS[category]) {
       return t(CATEGORY_KEYS[category])
-    }
-    // If it's already a key, translate it
-    if (category.startsWith('category.')) {
-      return t(category)
     }
     return category
   }
@@ -922,6 +939,7 @@ export function useI18n() {
     t,
     setLocale,
     translateCategory,
+    normalizeCategory,
   }
 }
 

@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { db, stripProxy } from '@/lib/db'
 import { DEFAULT_SWATCH } from '@/lib/colors'
 import { coordinatedWrite } from '@/lib/storage/coordination'
+import { ARTIST_CATEGORIES } from '@/types'
 import type { Artist, ArtistPage, SortOrder } from '@/types'
 
 const DEFAULT_PAGE_COLOR = DEFAULT_SWATCH
@@ -80,13 +81,36 @@ export const useArtistStore = defineStore('artist', () => {
     return result
   })
 
-  /** Categories within the current page only. */
+  const BUILTIN_CATEGORIES = new Set<string>(ARTIST_CATEGORIES)
+
+  /** 内置分类按固定顺序在前、自定义分类按本地化排序在后;永远在新数组上排,不动 ARTIST_CATEGORIES */
+  function orderCategories(present: Set<string>) {
+    const custom = [...present].filter(c => !BUILTIN_CATEGORIES.has(c)).sort((a, b) => a.localeCompare(b))
+    return [...ARTIST_CATEGORIES.filter(c => present.has(c)), ...custom]
+  }
+
+  /** Categories within the current page only(筛选器用)。 */
   const categories = computed(() => {
     const source = selectedPageId.value == null
       ? artists.value
       : artists.value.filter(a => a.pageId === selectedPageId.value)
-    const cats = new Set(source.map(a => a.category).filter(Boolean))
-    return ['all', ...Array.from(cats)]
+    const present = new Set(source.map(a => a.category).filter(Boolean))
+    return ['all', ...orderCategories(present)]
+  })
+
+  /**
+   * 表单选项:九个内置全部保留(零画师也在),再加全库出现过的自定义值 —— 跨分组复用同一个自定义分类。
+   * 分类即数据:没有独立的分类表,自定义分类只活在画师行上,最后一个画师改走它就消失(同标签)。
+   */
+  const categoryOptions = computed(() => {
+    const present = new Set<string>(ARTIST_CATEGORIES)
+    for (const a of artists.value) if (a.category) present.add(a.category)
+    return orderCategories(present)
+  })
+
+  // 切分组 / 删掉某分类最后一个画师之后,选中的分类不在列表里了 → 回「全部」,否则列表会无声清空
+  watch(categories, list => {
+    if (selectedCategory.value !== 'all' && !list.includes(selectedCategory.value)) selectedCategory.value = 'all'
   })
 
   // ===== Pages =====
@@ -421,6 +445,7 @@ export const useArtistStore = defineStore('artist', () => {
     pageCounts,
     filteredArtists,
     categories,
+    categoryOptions,
     // pages
     loadAll: coordinatedWrite(loadAll),
     addPage: coordinatedWrite(addPage),

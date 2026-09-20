@@ -28,18 +28,11 @@ export interface ArtistPage {
   updatedAt: Date
 }
 
-export type ArtistCategory =
-  | '写实'
-  | '二次元'
-  | '半写实'
-  | '概念艺术'
-  | '水彩风'
-  | '油画风'
-  | '插画'
-  | '像素风'
-  | '其他'
-
-export const ARTIST_CATEGORIES: ArtistCategory[] = [
+/**
+ * 内置风格分类。以中文值入库、显示时经 translateCategory 翻译;用户自定义的分类原样入库
+ * (Artist.category 就是普通 string,没有独立的分类表 —— 「分类即数据」)。
+ */
+export const ARTIST_CATEGORIES: readonly string[] = [
   '写实', '二次元', '半写实', '概念艺术',
   '水彩风', '油画风', '插画', '像素风', '其他',
 ]
