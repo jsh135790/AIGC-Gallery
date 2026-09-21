@@ -2,7 +2,7 @@
 
 All notable changes to AIGC Gallery are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the same text is used for the GitHub Release body of each version.
 
-## [3.1.0] - Unreleased
+## [3.1.0] - released
 
 ### Added
 
