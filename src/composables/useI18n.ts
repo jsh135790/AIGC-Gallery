@@ -32,7 +32,7 @@ const currentLocale = ref<Locale>(getInitialLocale())
 const messages: Record<Locale, Record<string, string>> = {
   'zh-CN': {
     'storage.tab': '存储与备份',
-    'storage.tabShort': '存储备份',
+    'storage.tabShort': '存储',
     'storage.state.checking': '正在查询存储状态…',
     'storage.state.persistent': '存储保护已开启',
     'storage.state.best-effort': '存储保护未开启',
@@ -100,8 +100,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'about.title': '关于 AIGC Gallery',
     'about.description': '本地 AI 生成图片管理工具',
     'about.feedbackGroup': '反馈/交流群',
-    'about.tabSettings': '功能设置',
-    'about.tabAuthor': '关于作者',
+    'about.tabSettings': '设置',
+    'about.tabAuthor': '作者',
     'about.authorEyebrow': '作者',
     'about.homepage': '主页',
     'about.repository': '仓库',
@@ -529,7 +529,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'about.description': 'Local AI-generated image management tool',
     'about.feedbackGroup': 'Feedback Group',
     'about.tabSettings': 'Settings',
-    'about.tabAuthor': 'About Author',
+    'about.tabAuthor': 'Author',
     'about.authorEyebrow': 'Author',
     'about.homepage': 'Homepage',
     'about.repository': 'Repository',

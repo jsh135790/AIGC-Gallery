@@ -48,6 +48,7 @@ onMounted(() => { refreshHistory(); void refresh() })
           <span role="status">{{ t(`storage.state.${status.state}`) }}</span>
         </div>
         <Button v-if="status.state !== 'persistent' && status.state !== 'unsupported'" variant="outline" size="sm"
+          class="h-auto min-h-8 max-w-full whitespace-normal"
           :disabled="busy || restored || status.requesting" @click="requestPersistence">
           {{ t(status.requesting ? 'storage.requesting' : status.requestResult === 'denied' || status.requestResult === 'error' ? 'storage.retry' : 'storage.request') }}
         </Button>

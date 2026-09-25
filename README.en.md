@@ -55,7 +55,18 @@ For complete folder backup and restore, use **HTTPS or localhost** where possibl
 
 ### Run from source
 
-Use **Node.js 24 LTS** and npm. Node.js 22.x starting at 22.12 is also supported.
+Install [Node.js](https://nodejs.org/) (including npm) first. **Node.js 24 LTS** is recommended; **22.12** is the minimum supported version.
+
+After downloading and extracting the source or cloning the repository, use the launcher in its root directory:
+
+- **Windows**: double-click `start.bat`.
+- **macOS / Linux**: run `bash start.sh` from a terminal in the repository directory.
+
+The launcher checks your environment and runs `npm ci` on the first start or when the dependency manifests change, which requires internet access. Subsequent starts reuse installed dependencies. A missing Vite entry or a change of Node.js major version also triggers installation. Installation failures stop the launcher and display an error.
+
+Once the server is ready, it opens [http://localhost:5173](http://localhost:5173). Keep the terminal open while using the app; press **Ctrl+C** to stop. If Windows asks whether to terminate the batch job, enter `Y` and press Enter. If the port is occupied, the launcher exits with an error without switching ports or terminating other processes. If this project is already running, open its existing page. On Windows, the window stays open after an error. If a macOS / Linux desktop does not open the browser automatically, visit the address manually.
+
+These scripts **run from source**. The release archive's `index.html` still opens directly without Node.js. You can also run the commands manually:
 
 ```bash
 git clone https://github.com/jsh135790/AIGC-Gallery.git
@@ -101,7 +112,7 @@ Automatic tag extraction from prompts is **off by default**. For comma-separated
 
 ## Storage protection and complete backups
 
-Open **About → Storage & backup**.
+Open **About → Storage**.
 
 ### Is storage protection enabled?
 
@@ -153,6 +164,7 @@ Built with Vue 3, TypeScript, Vite, Pinia, Dexie / IndexedDB, Tailwind CSS v4, s
 | `npm run dev` | Start the development server on fixed port 5173 |
 | `npm run build` | Type-check and build the single HTML file |
 | `npm test` | Run all Vitest tests, covering parsing, metadata round trips, storage status, backup / restore, and write coordination |
+| `npm run test:launcher` | Run isolated launcher tests without installing dependencies or accessing your library |
 | `npm run test:watch` | Run tests in watch mode |
 
 For a second development instance, use `npm run dev -- --port 5180`. It has separate storage and does not share the library on port 5173.
@@ -164,3 +176,7 @@ For a second development instance, use `npm run dev -- --port 5180`. It has sepa
 Licensed under [GPL-3.0](LICENSE).
 
 Thanks to [shadcn-vue](https://www.shadcn-vue.com/), [Reka UI](https://reka-ui.com/), [Dexie.js](https://dexie.org/), [ExifReader](https://github.com/mattiasw/ExifReader), and the other open-source projects used here.
+
+## Links
+
+- [Linux DO](https://linux.do/)

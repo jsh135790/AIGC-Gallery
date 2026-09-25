@@ -171,30 +171,32 @@ function isActiveAccent(hex: string | null) {
 
   <!-- About Dialog -->
   <Dialog v-model:open="dialogOpen">
-    <DialogContent class="max-w-md w-[calc(100vw-2rem)] max-h-[90dvh] overflow-y-auto">
+    <DialogContent class="max-w-md w-[calc(100vw-2rem)] max-h-[90dvh] overflow-y-auto p-4 sm:p-6">
       <DialogHeader>
         <DialogTitle class="text-lg">{{ t('about.title') }}</DialogTitle>
         <DialogDescription>{{ t('about.description') }}</DialogDescription>
       </DialogHeader>
 
-      <Tabs v-model="aboutTab" class="mt-2">
+      <Tabs v-model="aboutTab" class="mt-2 min-w-0">
         <TabsList class="grid w-full grid-cols-3">
-          <TabsTrigger value="settings" class="gap-1 px-1 text-xs sm:gap-1.5 sm:px-3 sm:text-sm" :disabled="preventClose">
-            <Settings class="hidden h-3.5 w-3.5 sm:block" />
+          <TabsTrigger value="settings" class="min-w-0 gap-1 px-0.5 text-xs sm:gap-1.5 sm:px-2 sm:text-sm" :disabled="preventClose">
+            <Settings class="h-3.5 w-3.5 shrink-0" />
             {{ t('about.tabSettings') }}
           </TabsTrigger>
-          <TabsTrigger value="storage" class="gap-1 px-1 text-xs sm:gap-1.5 sm:px-3 sm:text-sm">
-            <HardDrive class="hidden h-3.5 w-3.5 sm:block" />
-            <span class="sm:hidden">{{ t('storage.tabShort') }}</span>
-            <span class="hidden sm:inline">{{ t('storage.tab') }}</span>
+          <TabsTrigger value="storage" class="min-w-0 gap-1 px-0.5 text-xs sm:gap-1.5 sm:px-2 sm:text-sm">
+            <HardDrive class="h-3.5 w-3.5 shrink-0" />
+            {{ t('storage.tabShort') }}
           </TabsTrigger>
-          <TabsTrigger value="author" class="gap-1 px-1 text-xs sm:gap-1.5 sm:px-3 sm:text-sm" :disabled="preventClose">
-            <User class="hidden h-3.5 w-3.5 sm:block" />
+          <TabsTrigger value="author" class="min-w-0 gap-1 px-0.5 text-xs sm:gap-1.5 sm:px-2 sm:text-sm" :disabled="preventClose">
+            <User class="h-3.5 w-3.5 shrink-0" />
             {{ t('about.tabAuthor') }}
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="storage" class="mt-4"><StorageBackupPanel /></TabsContent>
+        <TabsContent value="storage" class="mt-4">
+          <h2 class="mb-3 text-sm font-medium">{{ t('storage.tab') }}</h2>
+          <StorageBackupPanel />
+        </TabsContent>
 
         <!-- Settings Tab -->
         <TabsContent value="settings" class="mt-3 space-y-4">

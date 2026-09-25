@@ -152,7 +152,7 @@ async function handleInspectFromLibrary(imageId: number) {
           :sublabel="t('inspector.dropSublabel')"
           @files="handleFiles"
         />
-        <p class="micro leading-relaxed">{{ t('inspector.intro') }}</p>
+        <p class="text-xs leading-relaxed text-muted-foreground">{{ t('inspector.intro') }}</p>
       </template>
 
       <template v-else>
