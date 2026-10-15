@@ -18,6 +18,8 @@ const props = defineProps<{
   filename: string
   alt?: string
   open: boolean
+  /** 隐私遮挡:大图开着时按了老板键,揭开状态被清空,图就地遮上(不关灯箱,免得焦点乱跳) */
+  masked?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -244,12 +246,13 @@ onUnmounted(() => {
           :style="scrollViewportStyle"
           @click.stop
         >
-          <div class="relative" :style="scaledImageStyle">
+          <!-- 遮挡时 .privacy-mask 的 transform 放大会撑出滚动区,在这一层裁掉 -->
+          <div class="relative" :class="masked && 'overflow-hidden'" :style="scaledImageStyle">
             <img
               :src="src"
               :alt="alt || filename"
-              class="block object-contain"
-              :class="naturalWidth ? 'max-w-none' : 'max-h-[90vh] max-w-[90vw]'"
+              class="block object-contain [--privacy-blur:64px]"
+              :class="[naturalWidth ? 'max-w-none' : 'max-h-[90vh] max-w-[90vw]', masked && 'privacy-mask']"
               :style="scaledImageStyle"
               @load="handleImageLoad"
             />

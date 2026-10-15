@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import {
-  ArrowUpDown, Trash2, CheckSquare, X, LayoutGrid, Columns3,
+  ArrowUpDown, Trash2, CheckSquare, X, LayoutGrid, Columns3, Eye, EyeOff,
 } from 'lucide-vue-next'
 import { useAigcStore } from '@/stores/aigcStore'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { useAigcSettings } from '@/composables/useAigcSettings'
+import { usePrivacyMode } from '@/composables/usePrivacyMode'
 import { parseImageMetadata, generateThumbnail, getTagsFromPrompt } from '@/lib/parser'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -25,12 +26,14 @@ import FolderPanel from '@/components/aigc/FolderPanel.vue'
 import ImageCard from '@/components/aigc/ImageCard.vue'
 import MasonryGrid from '@/components/aigc/MasonryGrid.vue'
 import ImageDetailPanel from '@/components/aigc/ImageDetailPanel.vue'
+import UploadNsfwToggle from '@/components/aigc/UploadNsfwToggle.vue'
 import type { AIGCImage, ParsedMetadata } from '@/types'
 
 const store = useAigcStore()
 const toast = useToast()
 const { t } = useI18n()
 const { autoParseTags } = useAigcSettings()
+const { uploadAsNsfw } = usePrivacyMode()
 
 const detailImageId = ref<number | null>(null)
 const detailOpen = ref(false)
@@ -89,6 +92,7 @@ async function handleUpload(files: File[]) {
   let failedCount = 0
   // 进循环前取一次快照:上传中途翻开关不该让同一批图前后不一致
   const shouldAutoTag = autoParseTags.value
+  const markNsfw = uploadAsNsfw.value
 
   try {
     for (let i = 0; i < files.length; i++) {
@@ -125,6 +129,7 @@ async function handleUpload(files: File[]) {
           ...(meta.stealth ? { stealth: true } : {}),
           tags,
           isFavorite: false,
+          ...(markNsfw ? { nsfw: true } : {}),
         })
       } catch (error) {
         failedCount += 1
@@ -211,6 +216,13 @@ async function batchDelete() {
   toast.success(t('aigc.deleteSuccess', { count: String(count) }))
 }
 
+// 批量标记后保留选择:方便马上核对,或者发现选错了直接反向操作
+async function batchSetNsfw(nsfw: boolean) {
+  const ids = Array.from(selectedIds.value)
+  await store.setImagesNsfw(ids, nsfw)
+  toast.success(t(nsfw ? 'privacy.batchMarked' : 'privacy.batchUnmarked', { count: String(ids.length) }))
+}
+
 // Reactive current nav label
 const currentFolderLabel = computed(() => {
   const item = store.folderNavItems.find(f => f.id === store.selectedFolderId)
@@ -276,6 +288,14 @@ const currentFolderLabel = computed(() => {
       <template v-if="selectMode && selectedIds.size > 0">
         <Button variant="outline" size="sm" class="gap-1.5 h-8" @click="selectAll">
           {{ selectedIds.size === store.filteredImages.length ? t('common.deselectAll') : t('common.selectAll') }}
+        </Button>
+        <Button variant="outline" size="sm" class="gap-1.5 h-8" :title="t('privacy.batchMark')" @click="batchSetNsfw(true)">
+          <EyeOff class="h-3.5 w-3.5" />
+          <span class="hidden sm:inline text-xs">{{ t('privacy.batchMark') }}</span>
+        </Button>
+        <Button variant="outline" size="sm" class="gap-1.5 h-8" :title="t('privacy.batchUnmark')" @click="batchSetNsfw(false)">
+          <Eye class="h-3.5 w-3.5" />
+          <span class="hidden sm:inline text-xs">{{ t('privacy.batchUnmark') }}</span>
         </Button>
         <Button variant="destructive" size="sm" class="gap-1.5 h-8" @click="batchDelete">
           <Trash2 class="h-3.5 w-3.5" />
@@ -348,6 +368,9 @@ const currentFolderLabel = computed(() => {
       <!-- Empty state: show drop zone -->
       <div v-else-if="store.filteredImages.length === 0 && !store.searchQuery" class="max-w-lg mx-auto mt-8">
         <DropZone :scanning="isUploading" @files="handleUpload" />
+        <div class="mt-3 flex justify-center">
+          <UploadNsfwToggle />
+        </div>
         <p class="mt-4 text-center text-sm text-muted-foreground">
           {{ t('aigc.uploadHint') }}
         </p>
@@ -375,9 +398,12 @@ const currentFolderLabel = computed(() => {
           :sublabel="t('aigc.continueUploadHint')"
         />
 
-        <p class="mb-3 font-mono text-2xs text-muted-foreground">
-          {{ t('aigc.imageCount', { count: String(store.filteredImages.length) }) }}
-        </p>
+        <div class="mb-3 flex items-center justify-between gap-2">
+          <p class="font-mono text-2xs text-muted-foreground">
+            {{ t('aigc.imageCount', { count: String(store.filteredImages.length) }) }}
+          </p>
+          <UploadNsfwToggle />
+        </div>
 
         <MasonryGrid
           v-if="store.viewMode === 'masonry'"

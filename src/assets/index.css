@@ -512,6 +512,23 @@
   .scan-sweep { animation: scan-sweep 1.6s var(--ease-out-expo) infinite; }
 }
 
+@layer components {
+  /*
+   * 隐私遮挡(usePrivacyMode)。用 filter 不用 backdrop-filter:.no-blur 只关玻璃面的 backdrop-filter,
+   * 关掉「模糊效果」也不会把这里的遮挡一起关掉。
+   * 放大走 transform 而不是 scale 属性:卡片上的 group-hover:scale-105 走的是 scale,两者相乘而不是互相覆盖。
+   * 强度按场景用 --privacy-blur 调:卡片默认,面板/大图浏览器在使用处加大(模糊半径是绝对像素,图越大越要加)。
+   */
+  .privacy-mask {
+    filter: blur(var(--privacy-blur, 20px)) brightness(0.55) saturate(0.5);
+    transform: scale(1.2);
+  }
+  .privacy-mask-text {
+    filter: blur(5px);
+    user-select: none;
+  }
+}
+
 /* Selection styles — 实心安全灯琥珀,与主页一致 */
 ::selection {
   background: hsl(var(--primary));

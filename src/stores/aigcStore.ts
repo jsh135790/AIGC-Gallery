@@ -626,6 +626,35 @@ export const useAigcStore = defineStore('aigc', () => {
     })
   }
 
+  /** 批量设/取消敏感标记。只动 nsfw/updatedAt,不碰 tag 计数 —— 写法同 moveImagesToFolder */
+  function setImagesNsfw(imageIds: number[], nsfw: boolean) {
+    return enqueueImageMutation(async () => {
+      const uniqueIds = [...new Set(imageIds)]
+      if (uniqueIds.length === 0) return
+
+      const now = new Date()
+      const snapshots = new Map<number, Pick<AIGCImage, 'nsfw' | 'updatedAt'>>()
+      for (const id of uniqueIds) {
+        const image = images.value.find(item => item.id === id)
+        if (image) {
+          snapshots.set(id, { nsfw: image.nsfw, updatedAt: image.updatedAt })
+          image.nsfw = nsfw
+          image.updatedAt = now
+        }
+      }
+
+      try {
+        await db.aigcImages.bulkUpdate(uniqueIds.map(id => ({ key: id, changes: { nsfw, updatedAt: now } })))
+      } catch (error) {
+        for (const [id, snapshot] of snapshots) {
+          const image = images.value.find(item => item.id === id)
+          if (image) Object.assign(image, snapshot)
+        }
+        throw error
+      }
+    })
+  }
+
   // ===== Folder CRUD =====
   function addFolder(folder: Omit<AIGCFolder, 'id' | 'createdAt' | 'updatedAt' | 'sortOrder'>) {
     return enqueueImageMutation(async () => {
@@ -710,6 +739,7 @@ export const useAigcStore = defineStore('aigc', () => {
     updateImage,
     toggleImageFavorite,
     moveImagesToFolder,
+    setImagesNsfw,
     toggleTagFilter,
     addFolder,
     updateFolder,

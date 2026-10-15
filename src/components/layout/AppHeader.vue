@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Palette, Images, Wrench, Github, Info, MessageCircle, Sparkle, Settings, HardDrive, User, FileText, PenTool, Tags, Copy, Check, ExternalLink, GitBranch, RefreshCw } from 'lucide-vue-next'
+import { Palette, Images, Wrench, Github, Info, MessageCircle, Sparkle, Settings, HardDrive, User, FileText, PenTool, Tags, Copy, Check, ExternalLink, GitBranch, RefreshCw, Shield, ShieldCheck, ShieldOff, EyeOff, Keyboard } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -16,6 +16,7 @@ import { Separator } from '@/components/ui/separator'
 import SectionLabel from '@/components/common/SectionLabel.vue'
 import BrandIcon from '@/components/common/BrandIcon.vue'
 import ThemeToggle from './ThemeToggle.vue'
+import BossKeyRecorder from './BossKeyRecorder.vue'
 import LanguageToggle from './LanguageToggle.vue'
 import { useI18n } from '@/composables/useI18n'
 import { useCopyFeedback } from '@/composables/useCopyFeedback'
@@ -26,6 +27,7 @@ import { useAccentColor, ACCENT_PRESETS } from '@/composables/useAccentColor'
 import StorageBackupPanel from '@/components/storage/StorageBackupPanel.vue'
 import { useBackup } from '@/composables/useBackup'
 import { useUpdateCheck } from '@/composables/useUpdateCheck'
+import { usePrivacyMode } from '@/composables/usePrivacyMode'
 
 const route = useRoute()
 const router = useRouter()
@@ -43,6 +45,17 @@ const { accentColor, setAccent } = useAccentColor()
 const { status: updateStatus, latest: latestRelease, enabled: checkUpdates, hasUnseenUpdate, markSeen: markUpdateSeen, retry: retryUpdateCheck, toggleEnabled: toggleCheckUpdates } = useUpdateCheck()
 // file:// 打开的用户换路径就是另一份空图库;部署用户只需重新部署 —— 升级提示按入口分两版
 const isFileOrigin = location.protocol === 'file:'
+
+/*
+ * 盾牌 = 老板键:单击在「全部遮住」与基础档之间切,不经过「关闭」。图标反映当前生效档位,
+ * 只有全遮时上琥珀(单强调色)。基础档在功能设置里选。
+ */
+const { baseLevel, bossActive, level: privacyLevel, shortcutEnabled, bindingLabel, toggleBoss } = usePrivacyMode()
+const privacyIcon = computed(() => privacyLevel.value === 'all' ? ShieldCheck : privacyLevel.value === 'flagged' ? Shield : ShieldOff)
+const privacyTitle = computed(() => {
+  const action = bossActive.value ? t('privacy.bossOff') : t('privacy.bossOn')
+  return shortcutEnabled.value ? `${action} (${bindingLabel.value})` : action
+})
 
 /* vite.config.ts 的 define 注入,跟 package.json 同源。模板看不到全局 const,得转一手 */
 const appVersion = __APP_VERSION__
@@ -143,6 +156,20 @@ function isActiveAccent(hex: string | null) {
         >
           <Github class="h-4 w-4" />
           <span class="sr-only">GitHub</span>
+        </Button>
+
+        <!-- Privacy / boss key -->
+        <Button
+          variant="ghost"
+          size="icon"
+          class="h-9 w-9"
+          :class="bossActive && 'text-primary'"
+          :aria-pressed="bossActive"
+          :title="privacyTitle"
+          @click="toggleBoss"
+        >
+          <component :is="privacyIcon" class="h-4 w-4" />
+          <span class="sr-only">{{ privacyTitle }}</span>
         </Button>
 
         <!-- About -->
@@ -246,6 +273,33 @@ function isActiveAccent(hex: string | null) {
                 />
               </div>
             </div>
+          </div>
+
+          <!-- Privacy Settings(全部只存本机,见 usePrivacyMode) -->
+          <div class="space-y-1.5">
+            <SectionLabel class="px-1">{{ t('settings.privacy') }}</SectionLabel>
+            <button
+              class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-xs sm:text-sm transition-colors hover:bg-accent"
+              @click="baseLevel = baseLevel === 'flagged' ? 'off' : 'flagged'"
+            >
+              <div class="flex items-center gap-2">
+                <EyeOff class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
+                <span>{{ t('settings.privacyMaskFlagged') }}</span>
+              </div>
+              <Switch :model-value="baseLevel === 'flagged'" class="pointer-events-none" tabindex="-1" />
+            </button>
+            <button
+              class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-xs sm:text-sm transition-colors hover:bg-accent"
+              @click="shortcutEnabled = !shortcutEnabled"
+            >
+              <div class="flex items-center gap-2">
+                <Keyboard class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
+                <span>{{ t('settings.bossKeyShortcut') }}</span>
+              </div>
+              <Switch :model-value="shortcutEnabled" class="pointer-events-none" tabindex="-1" />
+            </button>
+            <BossKeyRecorder :disabled="!shortcutEnabled" />
+            <p class="text-2xs text-dim px-3">{{ t('settings.privacyHint') }}</p>
           </div>
 
           <!-- Artist Gallery Settings -->

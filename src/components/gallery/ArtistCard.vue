@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import StarRating from '@/components/common/StarRating.vue'
+import PrivacyVeil from '@/components/common/PrivacyVeil.vue'
 import { useI18n } from '@/composables/useI18n'
+import { usePrivacyMode } from '@/composables/usePrivacyMode'
 import { useCopyFeedback } from '@/composables/useCopyFeedback'
 import type { Artist } from '@/types'
 
@@ -22,6 +24,12 @@ const emit = defineEmits<{
 const { t, translateCategory } = useI18n()
 const thumbnailUrl = ref<string | null>(null)
 const { copiedKey, copy } = useCopyFeedback()
+
+// 遮挡范围含卡片上那行 prompt(画师串里也可能有露骨 tag);复制照常可用 —— 剪贴板不在屏幕上
+const privacy = usePrivacyMode()
+const revealKey = computed(() => `artist:${props.artist.id}`)
+const masked = computed(() => privacy.isMasked(revealKey.value, props.artist.nsfw))
+const showNsfwChip = computed(() => privacy.level.value === 'off' && props.artist.nsfw === true)
 
 // Watch for changes in artist.images and regenerate thumbnail URL
 watch(() => props.artist.images, (newImages) => {
@@ -65,6 +73,7 @@ async function copyPrompt() {
         :src="thumbnailUrl"
         :alt="artist.name"
         class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+        :class="masked && 'privacy-mask'"
         loading="lazy"
       />
       <div v-else class="flex h-full items-center justify-center text-dim">
@@ -73,6 +82,8 @@ async function copyPrompt() {
 
       <!-- Overlay on hover -->
       <div class="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+      <PrivacyVeil v-if="masked && thumbnailUrl" @reveal="privacy.reveal(revealKey)" />
 
       <!-- Favorite button -->
       <Button
@@ -87,13 +98,21 @@ async function copyPrompt() {
       </Button>
 
       <!-- Category badge -->
-      <Badge
-        v-if="artist.category"
-        variant="secondary"
-        class="absolute top-2 left-2 bg-background/85 text-foreground backdrop-blur-sm text-2xs"
-      >
-        {{ translatedCategory }}
-      </Badge>
+      <div class="absolute top-2 left-2 flex gap-1">
+        <Badge
+          v-if="artist.category"
+          variant="secondary"
+          class="bg-background/85 text-foreground backdrop-blur-sm text-2xs"
+        >
+          {{ translatedCategory }}
+        </Badge>
+        <span
+          v-if="showNsfwChip"
+          class="rounded-sm border bg-background/85 text-foreground backdrop-blur-sm px-1.5 py-0 font-mono text-2xs uppercase"
+        >
+          NSFW
+        </span>
+      </div>
     </div>
 
     <!-- Info -->
@@ -115,7 +134,7 @@ async function copyPrompt() {
               @click.stop="copyPrompt"
             >
               <Copy class="h-3 w-3 shrink-0 text-dim group-hover/prompt:text-foreground" />
-              <span class="truncate">{{ artist.prompt }}</span>
+              <span class="truncate" :class="masked && 'privacy-mask-text'">{{ artist.prompt }}</span>
             </button>
           </TooltipTrigger>
           <TooltipContent>

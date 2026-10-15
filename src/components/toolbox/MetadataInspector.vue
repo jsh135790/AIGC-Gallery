@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, watch, onUnmounted } from 'vue'
-import { FileSearch, X, Layers, ChevronDown, ChevronRight, Users } from 'lucide-vue-next'
+import { FileSearch, X, Layers, ChevronDown, ChevronRight, Users, Eye } from 'lucide-vue-next'
 import { useAigcStore } from '@/stores/aigcStore'
 import { useI18n } from '@/composables/useI18n'
 import { useToast } from '@/composables/useToast'
+import { usePrivacyMode } from '@/composables/usePrivacyMode'
 import { prettify } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -47,6 +48,20 @@ watch(() => session.value?.blob, blob => {
 
 onUnmounted(() => {
   if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
+})
+
+/* 只遮缩略图,文字不遮 —— 规则同编辑器(见 MetadataEditor 的 previewMasked) */
+const privacy = usePrivacyMode()
+const previewRevealKey = computed(() => {
+  const current = session.value
+  if (!current) return ''
+  return current.imageId != null ? `aigc:${current.imageId}` : `inspector:${current.filename}:${current.blob.size}`
+})
+const previewMasked = computed(() => {
+  const current = session.value
+  if (!current) return false
+  const nsfw = current.imageId != null ? store.images.find(item => item.id === current.imageId)?.nsfw : undefined
+  return privacy.isMasked(previewRevealKey.value, nsfw)
 })
 
 const diagnostics = computed(() => session.value?.metadata.diagnostics ?? null)
@@ -158,12 +173,24 @@ async function handleInspectFromLibrary(imageId: number) {
       <template v-else>
         <!-- 文件头 -->
         <section class="panel flex items-center gap-3 rounded-lg p-3">
-          <img
-            v-if="previewUrl"
-            :src="previewUrl"
-            :alt="session.filename"
-            class="hair h-14 w-14 shrink-0 rounded-md object-cover"
-          />
+          <div v-if="previewUrl" class="hair relative h-14 w-14 shrink-0 overflow-hidden rounded-md">
+            <img
+              :src="previewUrl"
+              :alt="session.filename"
+              class="h-full w-full object-cover [--privacy-blur:8px]"
+              :class="previewMasked && 'privacy-mask'"
+            />
+            <button
+              v-if="previewMasked"
+              type="button"
+              class="absolute inset-0 flex items-center justify-center text-white/80 transition-colors hover:text-white"
+              :aria-label="t('privacy.reveal')"
+              :title="t('privacy.reveal')"
+              @click="privacy.reveal(previewRevealKey)"
+            >
+              <Eye class="h-4 w-4" />
+            </button>
+          </div>
           <div class="min-w-0 flex-1">
             <p class="truncate font-mono text-xs font-medium" :title="session.filename">
               {{ session.filename }}

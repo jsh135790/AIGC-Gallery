@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, reactive, watch, toRaw, onUnmounted } from 'vue'
-import { Plus, X, Trash2 } from 'lucide-vue-next'
+import { Plus, X, Trash2, Eye, EyeOff } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -14,7 +15,9 @@ import {
 import DropZone from '@/components/common/DropZone.vue'
 import SidePanel from '@/components/common/SidePanel.vue'
 import StarRating from '@/components/common/StarRating.vue'
+import PrivacyVeil from '@/components/common/PrivacyVeil.vue'
 import { useI18n } from '@/composables/useI18n'
+import { usePrivacyMode } from '@/composables/usePrivacyMode'
 import { useArtistSettings } from '@/composables/useArtistSettings'
 import { useArtistStore } from '@/stores/artistStore'
 import type { Artist } from '@/types'
@@ -44,8 +47,19 @@ const form = reactive({
   images: [] as Blob[],
   thumbnails: [] as string[],
   isFavorite: false,
+  nsfw: false,
   pageId: null as number | null,
 })
+
+/*
+ * 这个面板就是画师的「详情页」(点卡片打开的就是它),所以和图片详情面板同样处理:
+ * 样图与 prompt 一起遮,揭开后 prompt 才可编辑。编辑时与卡片共用 artist:<id>,
+ * 新建时还没有 id,用 artist:new,每次打开面板重置。
+ */
+const privacy = usePrivacyMode()
+const revealKey = computed(() => props.editArtist?.id ? `artist:${props.editArtist.id}` : 'artist:new')
+const masked = computed(() => privacy.isMasked(revealKey.value, form.nsfw))
+function reveal() { privacy.reveal(revealKey.value) }
 
 const newTag = ref('')
 const imagePreviews = ref<string[]>([])
@@ -103,6 +117,7 @@ watch([() => props.editArtist, () => props.open], ([artist, isOpen]) => {
   // Clean up old preview URLs
   revokePreviews()
   customMode.value = false
+  if (isOpen) privacy.forget('artist:new')
 
   // Only fill form when panel is opening with an artist
   if (isOpen && artist) {
@@ -113,6 +128,7 @@ watch([() => props.editArtist, () => props.open], ([artist, isOpen]) => {
     form.tags = [...artist.tags]
     form.images = [...artist.images]
     form.isFavorite = artist.isFavorite
+    form.nsfw = artist.nsfw === true
     form.pageId = artist.pageId ?? store.selectedPageId
 
     // Generate preview URLs for existing images
@@ -135,6 +151,7 @@ function resetForm() {
   form.images = []
   form.thumbnails = []
   form.isFavorite = false
+  form.nsfw = false
   form.pageId = store.selectedPageId
   customMode.value = false
   customInput.value = ''
@@ -188,6 +205,7 @@ function save() {
     images: Array.from(raw.images),
     thumbnails: [...raw.thumbnails],
     isFavorite: raw.isFavorite,
+    nsfw: raw.nsfw,
     pageId: raw.pageId,
   })
   emit('update:open', false)
@@ -228,8 +246,25 @@ function onOpenChange(v: boolean) {
 
       <!-- Prompt -->
       <div class="space-y-2">
-        <label class="text-sm font-medium">{{ t('artist.prompt') }} <span class="text-destructive">*</span></label>
-        <Input v-model="form.prompt" placeholder="artist:wlop" class="font-mono text-sm" />
+        <div class="flex items-center justify-between gap-2">
+          <label class="text-sm font-medium">{{ t('artist.prompt') }} <span class="text-destructive">*</span></label>
+          <button
+            v-if="masked"
+            type="button"
+            class="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+            @click="reveal"
+          >
+            <Eye class="h-3.5 w-3.5" />
+            {{ t('privacy.reveal') }}
+          </button>
+        </div>
+        <Input
+          v-model="form.prompt"
+          placeholder="artist:wlop"
+          class="font-mono text-sm"
+          :class="masked && 'privacy-mask-text'"
+          :readonly="masked"
+        />
       </div>
 
       <!-- Page (group) -->
@@ -345,7 +380,16 @@ function onOpenChange(v: boolean) {
         />
         <div v-if="imagePreviews.length" class="pt-2">
           <div class="group relative aspect-3/4 max-w-[200px] overflow-hidden rounded-lg border">
-            <img :src="imagePreviews[0]" class="h-full w-full object-cover" />
+            <img :src="imagePreviews[0]" class="h-full w-full object-cover [--privacy-blur:28px]" :class="masked && 'privacy-mask'" />
+            <button
+              v-if="masked"
+              type="button"
+              class="absolute inset-0"
+              :aria-label="t('privacy.reveal')"
+              @click="reveal"
+            >
+              <PrivacyVeil variant="panel" />
+            </button>
             <button
               class="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-background/80 text-foreground backdrop-blur-sm hover:bg-background opacity-0 transition-opacity group-hover:opacity-100"
               @click="removeImage(0)"
@@ -354,6 +398,19 @@ function onOpenChange(v: boolean) {
             </button>
           </div>
         </div>
+
+        <button
+          type="button"
+          class="flex w-full items-center justify-between rounded-lg border px-3 py-2 text-xs transition-colors hover:bg-accent"
+          :aria-pressed="form.nsfw"
+          @click="form.nsfw = !form.nsfw"
+        >
+          <span class="flex items-center gap-2">
+            <EyeOff class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            {{ t('privacy.markNsfw') }}
+          </span>
+          <Switch :model-value="form.nsfw" class="pointer-events-none" tabindex="-1" />
+        </button>
       </div>
     </div>
 

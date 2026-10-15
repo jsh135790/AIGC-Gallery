@@ -2,17 +2,19 @@
 import { ref, watch, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  Heart, Trash2, Tag, Maximize2, Edit, FileSearch,
+  Heart, Trash2, Tag, Maximize2, Edit, FileSearch, EyeOff,
 } from 'lucide-vue-next'
 import { useAigcStore } from '@/stores/aigcStore'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { useMetadataEditor } from '@/composables/useMetadataEditor'
 import { useMetadataInspector } from '@/composables/useMetadataInspector'
+import { usePrivacyMode } from '@/composables/usePrivacyMode'
 import { parseBlobMetadata } from '@/lib/parser'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
+import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -22,6 +24,7 @@ import {
 } from '@/components/ui/select'
 import SidePanel from '@/components/common/SidePanel.vue'
 import ImageLightbox from '@/components/common/ImageLightbox.vue'
+import PrivacyVeil from '@/components/common/PrivacyVeil.vue'
 import SectionLabel from '@/components/common/SectionLabel.vue'
 import MetadataViewer from './MetadataViewer.vue'
 import TagBadge from '@/components/common/TagBadge.vue'
@@ -47,6 +50,26 @@ const newTag = ref('')
 const lightboxOpen = ref(false)
 const previewTrigger = ref<HTMLButtonElement | null>(null)
 const busy = ref(false)
+
+/*
+ * 揭开 key 与卡片共用(aigc:<id>):在网格里揭开过,打开面板就不再遮,反之亦然。
+ * 遮着的时候点预览 = 揭开,不开灯箱 —— 灯箱只对已揭开的图开放。
+ */
+const privacy = usePrivacyMode()
+const revealKey = computed(() => `aigc:${props.image?.id}`)
+const masked = computed(() => !!props.image && privacy.isMasked(revealKey.value, props.image.nsfw))
+
+function handlePreviewClick() {
+  if (masked.value) privacy.reveal(revealKey.value)
+  else lightboxOpen.value = true
+}
+
+async function toggleNsfw() {
+  if (!props.image?.id) return
+  const next = props.image.nsfw !== true
+  await store.setImagesNsfw([props.image.id], next)
+  toast.success(next ? t('privacy.marked') : t('privacy.unmarked'))
+}
 
 // Compute current folder value for the select
 const currentFolderValue = computed(() => {
@@ -214,21 +237,23 @@ async function handleViewRawMetadata() {
         ref="previewTrigger"
         type="button"
         class="group relative block w-full cursor-pointer overflow-hidden rounded-lg border"
-        :aria-label="t('lightbox.open')"
-        @click="lightboxOpen = true"
+        :aria-label="masked ? t('privacy.reveal') : t('lightbox.open')"
+        @click="handlePreviewClick"
       >
         <img
           :src="imageUrl"
           :alt="image.filename"
-          class="w-full object-contain max-h-64 transition-transform duration-300 group-hover:scale-[1.02]"
+          class="w-full object-contain max-h-64 transition-transform duration-300 group-hover:scale-[1.02] [--privacy-blur:32px]"
+          :class="masked && 'privacy-mask'"
         />
-        <div class="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
+        <PrivacyVeil v-if="masked" variant="panel" />
+        <div v-else class="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
           <Maximize2 class="h-6 w-6 text-white opacity-0 transition-opacity group-hover:opacity-100" />
         </div>
       </button>
 
       <!-- Metadata -->
-      <MetadataViewer :image="image" />
+      <MetadataViewer :image="image" :masked="masked" />
 
       <Separator />
 
@@ -288,6 +313,20 @@ async function handleViewRawMetadata() {
         </Select>
       </div>
 
+      <!-- Privacy flag -->
+      <button
+        type="button"
+        class="flex w-full items-center justify-between rounded-lg border px-3 py-2 text-xs transition-colors hover:bg-accent"
+        :aria-pressed="image.nsfw === true"
+        @click="toggleNsfw"
+      >
+        <span class="flex items-center gap-2">
+          <EyeOff class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          {{ t('privacy.markNsfw') }}
+        </span>
+        <Switch :model-value="image.nsfw === true" class="pointer-events-none" tabindex="-1" />
+      </button>
+
       <Separator />
 
       <!-- Actions -->
@@ -334,6 +373,7 @@ async function handleViewRawMetadata() {
       :src="imageUrl"
       :filename="image.filename"
       :alt="image.filename"
+      :masked="masked"
     />
   </SidePanel>
 </template>

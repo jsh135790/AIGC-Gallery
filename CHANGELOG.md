@@ -2,6 +2,24 @@
 
 All notable changes to AIGC Gallery are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the same text is used for the GitHub Release body of each version.
 
+## [3.2.0] - unreleased
+
+### Added
+
+- Privacy mode for viewing the library in public. Artists and images can be marked as NSFW; marked items are blurred together with their prompts, and each can be revealed individually. Hovering never reveals an item.
+- Three masking levels: show everything, blur marked content, or blur everything. The shield icon in the header switches between blurring everything and the everyday level, which is set under About → Settings.
+- An optional boss key shortcut (off by default, `` ` `` when enabled) that can be re-recorded under About → Settings. Keys used for dialogs and keyboard navigation, and combinations blocked by the browser, are rejected.
+- NSFW marking at every entry point: a switch in the artist form and the image details, an "Import as NSFW" toggle beside the upload area, and batch mark / unmark in selection mode.
+- Source launchers: `start.bat` on Windows and `start.sh` on macOS / Linux check the Node.js environment, install dependencies when needed, and open the app.
+
+### Changed
+
+- About dialog tabs are renamed to Settings, Storage and Author, and keep their icons on narrow screens.
+
+### Notes
+
+- The NSFW mark is stored on each artist and image and is included in backups. Privacy levels and shortcut settings stay on the current device and are not backed up, so older backups remain restorable.
+
 ## [3.1.0] - released
 
 ### Added

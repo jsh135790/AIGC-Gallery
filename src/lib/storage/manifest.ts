@@ -112,6 +112,7 @@ export function validateManifest(value: unknown): asserts value is BackupManifes
     check(number(row.rating) && row.rating >= 0 && row.rating <= 5, `${at}.rating`)
     check(strings(row.tags) && strings(row.thumbnails) && strings(row.images), `${at}.arrays`)
     check(typeof row.isFavorite === 'boolean', `${at}.isFavorite`)
+    check(row.nsfw === undefined || typeof row.nsfw === 'boolean', `${at}.nsfw`)
     check(row.pageId === null || ids.get('artistPages')!.has(row.pageId), `${at}.pageId`)
     if (strings(row.images)) row.images.forEach(path => reference(path, `${at}.images`))
   }
@@ -136,6 +137,7 @@ export function validateManifest(value: unknown): asserts value is BackupManifes
     check(row.folderId === null || ids.get('aigcFolders')!.has(row.folderId), `${at}.folderId`)
     for (const key of ['width', 'height'] as const) check(row[key] === undefined || (number(row[key]) && row[key]! > 0), `${at}.${key}`)
     check(row.stealth === undefined || typeof row.stealth === 'boolean', `${at}.stealth`)
+    check(row.nsfw === undefined || typeof row.nsfw === 'boolean', `${at}.nsfw`)
     reference(row.imageData, `${at}.imageData`)
     reference(row.thumbnail, `${at}.thumbnail`)
     if (row.v4Data !== undefined) {

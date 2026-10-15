@@ -5,6 +5,7 @@ import AppHeader from '@/components/layout/AppHeader.vue'
 import ToastContainer from '@/components/common/ToastContainer.vue'
 import { startStorageStatus } from '@/composables/useStorageStatus'
 import { startUpdateCheck } from '@/composables/useUpdateCheck'
+import { installPrivacyShortcut } from '@/composables/usePrivacyMode'
 import { libraryCoordinator } from '@/lib/storage/coordination'
 import { useI18n } from '@/composables/useI18n'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
@@ -12,6 +13,7 @@ import { Button } from '@/components/ui/button'
 
 startStorageStatus()
 startUpdateCheck()
+installPrivacyShortcut()
 const { t } = useI18n()
 const stale = libraryCoordinator.remoteStale
 function reloadLibrary() { location.reload() }

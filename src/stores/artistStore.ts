@@ -408,7 +408,7 @@ export const useArtistStore = defineStore('artist', () => {
 
     const targetPageId = selectedPageId.value ?? sortedPages.value[0]?.id ?? null
 
-    type ImportedArtist = Partial<Pick<Artist, 'name' | 'prompt' | 'category' | 'rating' | 'tags' | 'isFavorite'>>
+    type ImportedArtist = Partial<Pick<Artist, 'name' | 'prompt' | 'category' | 'rating' | 'tags' | 'isFavorite' | 'nsfw'>>
     const rows: Artist[] = (items as ImportedArtist[]).map(item => ({
       name: item.name || '',
       prompt: item.prompt || '',
@@ -418,6 +418,7 @@ export const useArtistStore = defineStore('artist', () => {
       images: [],
       thumbnails: [],
       isFavorite: item.isFavorite ?? false,
+      nsfw: item.nsfw === true,
       pageId: targetPageId,
       createdAt: now,
       updatedAt: now,

@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { Expand, Upload } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
+import PrivacyVeil from '@/components/common/PrivacyVeil.vue'
 import { useI18n } from '@/composables/useI18n'
 import { formatBytes } from '@/lib/format'
 import type { ImageSource } from '@/types'
@@ -19,10 +20,13 @@ const props = defineProps<{
   source: ImageSource
   /** 导出 / 回写进行中。此时不许换图:写回流程在 await 前捕获了会话 */
   busy?: boolean
+  /** 隐私遮挡。遮着时点预览 = 揭开,不展开灯箱 */
+  masked?: boolean
 }>()
 
 const emit = defineEmits<{
   expand: []
+  reveal: []
   'pick-file': [file: File]
 }>()
 
@@ -79,16 +83,19 @@ function onFileChange(event: Event) {
     <button
       type="button"
       class="hair group relative flex max-h-[38vh] min-h-[8rem] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-background sm:w-42 lg:w-full"
-      :title="t('lightbox.open')"
-      @click="emit('expand')"
+      :title="masked ? t('privacy.reveal') : t('lightbox.open')"
+      @click="masked ? emit('reveal') : emit('expand')"
     >
       <img
         :src="imageUrl"
         :alt="filename"
-        class="block max-h-[38vh] w-full object-contain"
+        class="block max-h-[38vh] w-full object-contain [--privacy-blur:32px]"
+        :class="masked && 'privacy-mask'"
         @load="onImageLoad"
       />
+      <PrivacyVeil v-if="masked" variant="panel" />
       <span
+        v-else
         class="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition-[opacity,background-color] duration-200 group-hover:bg-black/35 group-hover:opacity-100"
       >
         <Expand class="h-5 w-5" />

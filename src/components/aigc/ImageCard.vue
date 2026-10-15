@@ -2,6 +2,8 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Heart, Check } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
+import PrivacyVeil from '@/components/common/PrivacyVeil.vue'
+import { usePrivacyMode } from '@/composables/usePrivacyMode'
 import type { AIGCImage } from '@/types'
 
 const props = withDefaults(defineProps<{
@@ -21,6 +23,12 @@ const emit = defineEmits<{
 }>()
 
 const thumbnailUrl = ref<string>('')
+
+const privacy = usePrivacyMode()
+const revealKey = computed(() => `aigc:${props.image.id}`)
+const masked = computed(() => privacy.isMasked(revealKey.value, props.image.nsfw))
+// 角标只在「关闭」档出现:遮挡档下被遮本身就是标记,全遮档下再露角标等于告诉旁人哪几张是
+const showNsfwChip = computed(() => privacy.level.value === 'off' && props.image.nsfw === true)
 
 onMounted(() => {
   const blob = props.image.thumbnail || props.image.imageData
@@ -70,6 +78,7 @@ const aspectStyle = computed(() => {
         :src="thumbnailUrl"
         :alt="image.filename"
         class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+        :class="masked && 'privacy-mask'"
         loading="lazy"
       />
       <div v-else class="flex h-full items-center justify-center">
@@ -79,12 +88,20 @@ const aspectStyle = computed(() => {
       <!-- Hover overlay with info -->
       <div class="absolute inset-0 bg-linear-to-t from-black/60 via-black/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
+      <PrivacyVeil v-if="masked" @reveal="privacy.reveal(revealKey)" />
+
       <!-- Source chip — neutral mono, single-accent discipline -->
-      <span
-        class="absolute top-2 left-2 rounded-sm border bg-background/85 text-foreground backdrop-blur-sm px-1.5 py-0 font-mono text-2xs uppercase"
-      >
-        {{ sourceLabel[image.source] || '?' }}
-      </span>
+      <div class="absolute top-2 left-2 flex gap-1">
+        <span class="rounded-sm border bg-background/85 text-foreground backdrop-blur-sm px-1.5 py-0 font-mono text-2xs uppercase">
+          {{ sourceLabel[image.source] || '?' }}
+        </span>
+        <span
+          v-if="showNsfwChip"
+          class="rounded-sm border bg-background/85 text-foreground backdrop-blur-sm px-1.5 py-0 font-mono text-2xs uppercase"
+        >
+          NSFW
+        </span>
+      </div>
 
       <!-- Selected check (amber) -->
       <div
@@ -107,7 +124,10 @@ const aspectStyle = computed(() => {
       </Button>
 
       <!-- Filename on hover at bottom of image -->
-      <div class="absolute bottom-0 left-0 right-0 px-2.5 pb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+      <div
+        class="absolute bottom-0 left-0 right-0 px-2.5 pb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        :class="masked && 'pr-11'"
+      >
         <p class="font-mono text-2xs font-medium text-white truncate drop-shadow-md" :title="image.filename">
           {{ image.filename }}
         </p>

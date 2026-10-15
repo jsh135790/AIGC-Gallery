@@ -10,6 +10,8 @@ export interface Artist {
   images: Blob[]
   thumbnails: string[]
   isFavorite: boolean
+  /** 敏感内容标记,隐私遮挡据此判断(见 usePrivacyMode)。非索引字段,旧数据缺省即 false,无需升 schema 也无需回填 */
+  nsfw?: boolean
   /** Owning page id. Nullable only during migration window; new artists always have a page. */
   pageId: number | null
   createdAt: Date
@@ -82,6 +84,8 @@ export interface AIGCImage {
   stealth?: boolean
   tags: string[]
   isFavorite: boolean
+  /** 敏感内容标记,隐私遮挡据此判断(见 usePrivacyMode)。非索引字段,旧数据缺省即 false,无需升 schema 也无需回填 */
+  nsfw?: boolean
   createdAt: Date
   updatedAt: Date
 }

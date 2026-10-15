@@ -15,6 +15,8 @@ import type { AIGCImage } from '@/types'
 
 const props = defineProps<{
   image: AIGCImage
+  /** 隐私遮挡:模糊 prompt 类文本(正/负面、v4 全局与角色 prompt)。参数不遮 —— 种子、步数不泄露内容 */
+  masked?: boolean
 }>()
 
 const { t } = useI18n()
@@ -66,7 +68,7 @@ watch(() => props.image, () => { showMore.value = false })
         </Button>
       </div>
       <div class="border bg-background rounded-lg p-3 text-xs leading-relaxed max-h-32 overflow-y-auto font-mono">
-        {{ image.prompt }}
+        <span class="block" :class="masked && 'privacy-mask-text'">{{ image.prompt }}</span>
       </div>
     </div>
 
@@ -85,7 +87,7 @@ watch(() => props.image, () => { showMore.value = false })
         </Button>
       </div>
       <div class="border bg-background rounded-lg p-3 text-xs leading-relaxed max-h-24 overflow-y-auto font-mono text-muted-foreground">
-        {{ image.negativePrompt }}
+        <span class="block" :class="masked && 'privacy-mask-text'">{{ image.negativePrompt }}</span>
       </div>
     </div>
 
@@ -114,7 +116,7 @@ watch(() => props.image, () => { showMore.value = false })
           </Button>
         </div>
         <div class="border bg-background rounded-md p-2 text-2xs leading-relaxed max-h-20 overflow-y-auto font-mono">
-          {{ image.v4Data.basePrompt }}
+          <span class="block" :class="masked && 'privacy-mask-text'">{{ image.v4Data.basePrompt }}</span>
         </div>
       </div>
 
@@ -148,7 +150,7 @@ watch(() => props.image, () => { showMore.value = false })
             </Button>
           </div>
           <div class="border bg-background rounded-md p-2 text-2xs leading-relaxed max-h-20 overflow-y-auto font-mono">
-            {{ char.prompt }}
+            <span class="block" :class="masked && 'privacy-mask-text'">{{ char.prompt }}</span>
           </div>
         </div>
 
@@ -167,7 +169,7 @@ watch(() => props.image, () => { showMore.value = false })
             </Button>
           </div>
           <div class="border bg-background rounded-md p-2 text-2xs leading-relaxed max-h-16 overflow-y-auto font-mono text-muted-foreground">
-            {{ char.negative }}
+            <span class="block" :class="masked && 'privacy-mask-text'">{{ char.negative }}</span>
           </div>
         </div>
       </div>

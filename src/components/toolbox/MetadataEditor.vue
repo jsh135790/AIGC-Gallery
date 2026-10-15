@@ -10,6 +10,7 @@ import {
 } from '@/composables/useMetadataEditor'
 import { useAigcStore } from '@/stores/aigcStore'
 import { useToast } from '@/composables/useToast'
+import { usePrivacyMode } from '@/composables/usePrivacyMode'
 import { parseImageMetadata } from '@/lib/parser'
 import { COMMON_PARAMETER_KEYS, PARAMETER_LABEL_KEYS, formatMetadataValue } from '@/lib/metadata-display'
 import { DERIVED_FIELDS } from '@/lib/parser/fields'
@@ -88,6 +89,24 @@ onUnmounted(() => {
 
 const source = computed<ImageSource>(() => session.value?.source ?? 'unknown')
 const isUnsupported = computed(() => source.value === 'comfyui')
+
+/*
+ * 工具箱只遮图、不遮文字:编辑器是专门点进来的,把可编辑的文本框遮了它就没法用。
+ * 从图库来的会话复用 aigc:<id>(在详情面板揭开过就不再遮),标记现查 store —— 会话里不另存一份,
+ * 免得在详情面板改了标记这里还是旧值。直接拖进来的散文件没有标记,只在全遮档下遮。
+ */
+const privacy = usePrivacyMode()
+const previewRevealKey = computed(() => {
+  const current = session.value
+  if (!current) return ''
+  return current.id ? `aigc:${current.id}` : `editor:${current.filename}:${current.blob.size}`
+})
+const previewMasked = computed(() => {
+  const current = session.value
+  if (!current) return false
+  const nsfw = current.id ? aigcStore.images.find(item => String(item.id) === current.id)?.nsfw : undefined
+  return privacy.isMasked(previewRevealKey.value, nsfw)
+})
 const isBare = computed(() => source.value === 'unknown')
 const canWriteBack = computed(() => Boolean(session.value?.id) && !isUnsupported.value && !isBare.value)
 const characters = computed(() => session.value?.metadata.v4Data?.characters ?? [])
@@ -527,7 +546,9 @@ async function handleWriteBack() {
         :file-size="session.blob.size"
         :source="session.source"
         :busy="busy"
+        :masked="previewMasked"
         @expand="lightboxOpen = true"
+        @reveal="privacy.reveal(previewRevealKey)"
         @pick-file="requestReplace"
       >
         <template #notices>
@@ -634,6 +655,7 @@ async function handleWriteBack() {
     :open="lightboxOpen"
     :src="imageUrl"
     :filename="session.filename"
+    :masked="previewMasked"
     @update:open="lightboxOpen = $event"
   />
 </template>
