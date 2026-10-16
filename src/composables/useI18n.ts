@@ -120,7 +120,10 @@ const messages: Record<Locale, Record<string, string>> = {
     'settings.autoParseTags': '从提示词自动提取标签',
     // 隐私遮挡
     'settings.privacy': '隐私',
-    'settings.privacyMaskFlagged': '遮住标记为 NSFW 的内容',
+    'settings.privacyLevel': '内容遮挡',
+    'settings.privacyLevelOff': '关闭',
+    'settings.privacyLevelFlagged': '仅 NSFW',
+    'settings.privacyLevelAll': '全部',
     'settings.bossKeyShortcut': '老板键',
     'settings.bossKeyBinding': '按键',
     'settings.bossKeyRecord': '录制',
@@ -572,7 +575,10 @@ const messages: Record<Locale, Record<string, string>> = {
     'settings.autoParseTags': 'Extract tags from prompts',
     // Privacy masking
     'settings.privacy': 'Privacy',
-    'settings.privacyMaskFlagged': 'Blur content marked as NSFW',
+    'settings.privacyLevel': 'Content blur',
+    'settings.privacyLevelOff': 'Off',
+    'settings.privacyLevelFlagged': 'NSFW only',
+    'settings.privacyLevelAll': 'All',
     'settings.bossKeyShortcut': 'Boss key',
     'settings.bossKeyBinding': 'Shortcut',
     'settings.bossKeyRecord': 'Record',

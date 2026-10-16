@@ -50,7 +50,12 @@ const isFileOrigin = location.protocol === 'file:'
  * 盾牌 = 老板键:单击在「全部遮住」与基础档之间切,不经过「关闭」。图标反映当前生效档位,
  * 只有全遮时上琥珀(单强调色)。基础档在功能设置里选。
  */
-const { baseLevel, bossActive, level: privacyLevel, shortcutEnabled, bindingLabel, toggleBoss } = usePrivacyMode()
+const { bossActive, level: privacyLevel, shortcutEnabled, bindingLabel, toggleBoss } = usePrivacyMode()
+const privacyLevels = [
+  { value: 'off', label: 'settings.privacyLevelOff' },
+  { value: 'flagged', label: 'settings.privacyLevelFlagged' },
+  { value: 'all', label: 'settings.privacyLevelAll' },
+] as const
 const privacyIcon = computed(() => privacyLevel.value === 'all' ? ShieldCheck : privacyLevel.value === 'flagged' ? Shield : ShieldOff)
 const privacyTitle = computed(() => {
   const action = bossActive.value ? t('privacy.bossOff') : t('privacy.bossOn')
@@ -278,16 +283,26 @@ function isActiveAccent(hex: string | null) {
           <!-- Privacy Settings(全部只存本机,见 usePrivacyMode) -->
           <div class="space-y-1.5">
             <SectionLabel class="px-1">{{ t('settings.privacy') }}</SectionLabel>
-            <button
-              class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-xs sm:text-sm transition-colors hover:bg-accent"
-              @click="baseLevel = baseLevel === 'flagged' ? 'off' : 'flagged'"
-            >
-              <div class="flex items-center gap-2">
+            <!-- 三档与顶栏盾牌共用一份状态:选「全部」= 按盾牌,盾牌再点回到前一档 -->
+            <div class="rounded-lg px-3 py-2.5">
+              <div class="flex items-center gap-2 mb-2.5">
                 <EyeOff class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
-                <span>{{ t('settings.privacyMaskFlagged') }}</span>
+                <span class="text-xs sm:text-sm">{{ t('settings.privacyLevel') }}</span>
               </div>
-              <Switch :model-value="baseLevel === 'flagged'" class="pointer-events-none" tabindex="-1" />
-            </button>
+              <div class="hair ml-6 grid grid-cols-3 rounded-md p-0.5" role="group" :aria-label="t('settings.privacyLevel')">
+                <button
+                  v-for="option in privacyLevels"
+                  :key="option.value"
+                  type="button"
+                  class="h-7 rounded-sm px-2 text-xs transition-colors"
+                  :class="privacyLevel === option.value ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'"
+                  :aria-pressed="privacyLevel === option.value"
+                  @click="privacyLevel = option.value"
+                >
+                  {{ t(option.label) }}
+                </button>
+              </div>
+            </div>
             <button
               class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-xs sm:text-sm transition-colors hover:bg-accent"
               @click="shortcutEnabled = !shortcutEnabled"

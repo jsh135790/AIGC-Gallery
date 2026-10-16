@@ -58,7 +58,22 @@ const uploadAsNsfw = ref(read(UPLOAD_NSFW_KEY) === 'true')
 /** 录键期间全局快捷键让路,否则按下当前键位会先把老板键切了 */
 const recording = ref(false)
 
-const level = computed<PrivacyLevel>(() => bossActive.value ? 'all' : baseLevel.value)
+/*
+ * 设置里的三档选择器直接读写 level,与盾牌共用同一份状态:选「全部」等同按盾牌(只置 bossActive),
+ * 基础档原样保留,所以之后点盾牌仍回到原来那一档;选另外两档则写入基础档并退出全遮。
+ * 存储沿用 base + boss 两个 key,升级前存下的状态原样有效。
+ */
+const level = computed<PrivacyLevel>({
+  get: () => bossActive.value ? 'all' : baseLevel.value,
+  set: value => {
+    if (value === 'all') {
+      bossActive.value = true
+    } else {
+      baseLevel.value = value
+      bossActive.value = false
+    }
+  },
+})
 
 /*
  * 揭开状态只活在内存里,key 形如 aigc:<id> / artist:<id> / editor:<id>。

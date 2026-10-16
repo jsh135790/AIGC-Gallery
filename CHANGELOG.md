@@ -2,6 +2,14 @@
 
 All notable changes to AIGC Gallery are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the same text is used for the GitHub Release body of each version.
 
+## [3.2.1] - released
+
+### Changed
+
+- Privacy mode now has a three-way selector under About → Settings: Off, NSFW only, or All. Previously, blurring everything was only available from the shield icon in the header.
+- The selector and the shield icon stay in sync. Choosing All has the same effect as clicking the shield, and clicking the shield again returns to the level you were using before.
+- Your current privacy level carries over when you update.
+
 ## [3.2.0] - released
 
 ### Added
